@@ -1,0 +1,18 @@
+FERRELSA ERP | Actualización de pantalla de acceso
+
+Esta actualización cambia solo el diseño del frontend. NO modifica Backend ni el servicio de autenticación.
+
+INSTRUCCIONES
+1. Hacé una copia de seguridad de Proyecto/Frontend/src/App.jsx y styles.css.
+2. Copiá los archivos de la carpeta Frontend/src/ de este ZIP a Proyecto/Frontend/src/, reemplazando los anteriores.
+3. En PowerShell, ubicado en Proyecto/Frontend, ejecutá:
+   npm.cmd run dev
+4. Para subir a GitHub, desde Proyecto:
+   git add Frontend/src/App.jsx Frontend/src/styles.css
+   git commit -m "Mision y vision junto al login"
+   git push
+
+IMPORTANTE
+- El formulario conserva la conexión prevista en src/services/auth.js.
+- El inicio de sesión REAL sigue dependiendo de que el backend tenga un endpoint compatible.
+- Misión y visión son textos propuestos a partir del anteproyecto de FerreLSA.
