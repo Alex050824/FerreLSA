@@ -1,14 +1,14 @@
 
 import React, { useState } from 'react';
 
-import Brand from '../components/Brand.jsx';
-import Icon from '../components/Icon.jsx';
+import Brand from '../../components/Brand.jsx';
+import Icon from '../../components/Icon.jsx';
 import {
   signIn,
   AuthNotConfiguredError,
-} from '../services/auth.js';
+} from './auth.js';
 
-export default function Login({ onPreview }) {
+export default function Login({ onPreview, onStore, onAuthenticated }) {
   // ==========================================
   // ESTADOS
   // ==========================================
@@ -46,10 +46,7 @@ export default function Login({ onPreview }) {
 
       setPassword('');
 
-      setFeedback({
-        type: 'success',
-        text: 'Acceso validado. Configurá la ruta del panel para continuar.',
-      });
+      onAuthenticated();
     } catch (error) {
       setFeedback({
         type:
@@ -237,6 +234,9 @@ export default function Login({ onPreview }) {
               Explorar vista previa del sistema
 
               <Icon name="arrow" size={16} />
+            </button>
+            <button className="preview-link" type="button" onClick={onStore}>
+              Visitar tienda de demostración <Icon name="arrow" size={16} />
             </button>
           </div>
         </section>
