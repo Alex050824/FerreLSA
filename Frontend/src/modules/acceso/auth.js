@@ -1,25 +1,22 @@
+import { api } from '../../api.js';
+
+export function registerCustomer({ nombre, correo, password }) {
+  return api('/auth/registro', { method: 'POST', body: { nombre, correo, password } });
+}
+
 export async function signIn({ username, password }) {
-  const endpoint = import.meta.env.VITE_LOGIN_ENDPOINT?.trim() || '/api/auth/login';
-
-  let response;
+  let session;
   try {
-    response = await fetch(endpoint, {
+    session = await api('/auth/login', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ username, password }),
+      body: { username, password },
     });
-  } catch {
-    throw new Error('No se pudo conectar con el servidor. Verificá que el backend esté disponible.');
-  }
-
-  if (!response.ok) {
-    if (response.status === 401 || response.status === 403) {
-      throw new Error('Usuario o contraseña incorrectos.');
+  } catch (error) {
+    if (error.status === 401 || error.status === 403) {
+      throw new Error('Correo o contraseña incorrectos.');
     }
-    throw new Error('No fue posible completar el ingreso. Intentá nuevamente.');
+    throw error;
   }
-  const session = await response.json().catch(() => null);
   if (!session?.token || !['ADMIN', 'CLIENTE'].includes(session.usuario?.rol)) {
     throw new Error('El servidor devolvió una respuesta de inicio de sesión inválida.');
   }

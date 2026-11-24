@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import './Store.css';
 import { quantity, amount } from './utils.js';
 import Catalogo from './components/Catalogo.jsx';
@@ -8,12 +8,32 @@ import Checkout from './components/Checkout.jsx';
 import Historial from './components/Historial.jsx';
 import Chat from './components/Chat.jsx';
 
+function LoginRequiredDialog({ onClose, onLogin }) {
+  const dialogRef = useRef(null);
 
-export default function Store({ data, customer, feedback, onLogout, page, selectedId, onNavigate, chatOpen, onChatToggle, onBack }) {
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    dialog.showModal();
+    return () => { if (dialog.open) dialog.close(); };
+  }, []);
+
+  return <dialog ref={dialogRef} className="store-login-dialog" aria-modal="true" aria-labelledby="store-login-title"
+    aria-describedby="store-login-description" onCancel={event => { event.preventDefault(); onClose(); }}>
+    <h2 id="store-login-title">Iniciá sesión</h2>
+    <p id="store-login-description">Necesitás iniciar sesión para agregar productos al carrito.</p>
+    <div className="store-login-dialog__actions">
+      <button className="store-login-dialog__cancel" type="button" onClick={onClose} autoFocus>Seguir explorando</button>
+      <button className="store-button" type="button" onClick={onLogin}>Iniciar sesión</button>
+    </div>
+  </dialog>;
+}
+
+
+export default function Store({ data, customer, token, verifyingSession, feedback, cart, setCart, onLogin, onLogout, page, selectedId, onNavigate, chatOpen, onChatToggle, onBack }) {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('');
-  const [cart, setCart] = useState([]);
   const [notice, setNotice] = useState('');
+  const [loginRequired, setLoginRequired] = useState(false);
   const products = data.productos || [];
   const categories = data.categorias || [];
   const active = item => item.activo !== false && item.activo !== 0;
@@ -25,28 +45,50 @@ export default function Store({ data, customer, feedback, onLogout, page, select
   const itemCount = quantity(cart.reduce((sum, line) => sum + (Number(line.quantity) || 0), 0));
   const customerSales = (data.ventas || []).filter(sale => sale.canal === 'EN_LINEA' && customer && String(sale.usuario_id) === String(customer.id));
 
+  useEffect(() => {
+    setCart(previous => {
+      let changed = false;
+      const next = previous.map(line => {
+        const product = products.find(item => String(item.id) === String(line.productId));
+        const max = Math.floor(Number(product?.existencia) || 0);
+        const value = Math.max(1, Math.floor(Number(line.quantity) || 1));
+        const quantity = max >= 1 ? Math.min(value, max) : value;
+        if (quantity === line.quantity) return line;
+        changed = true;
+        return { ...line, quantity };
+      });
+      return changed ? next : previous;
+    });
+  }, [products]);
+
   function navigate(next, productId) {
     onNavigate(next, productId);
-    setComment('');
     setNotice('');
     window.scrollTo(0, 0);
   }
+  function requireCustomer() {
+    if (customer) return true;
+    if (verifyingSession) setNotice('Estamos verificando tu sesión. Intentá de nuevo en un momento.');
+    else setLoginRequired(true);
+    return false;
+  }
   function addToCart(product) {
+    if (!requireCustomer()) return;
     const stock = Number(product.existencia) || 0;
-    if (stock <= 0) { setNotice('Este producto no tiene existencias disponibles.'); return; }
-    const increment = Math.min(1, stock);
+    if (stock < 1) { setNotice('Este producto no tiene una unidad disponible.'); return; }
     const current = Number(cart.find(item => item.productId === product.id)?.quantity) || 0;
-    if (current + increment > stock + 0.00001) { setNotice('La cantidad en el carrito ya alcanza la existencia disponible.'); return; }
-    setCart(previous => current ? previous.map(item => item.productId === product.id ? { ...item, quantity: quantity(Number(item.quantity) + increment) } : item) : [...previous, { productId: product.id, quantity: increment }]);
+    if (current + 1 > stock) { setNotice('La cantidad en el carrito ya alcanza la existencia disponible.'); return; }
+    setCart(previous => current ? previous.map(item => item.productId === product.id ? { ...item, quantity: Number(item.quantity) + 1 } : item) : [...previous, { productId: product.id, quantity: 1 }]);
     setNotice(`${product.nombre} se agregó al carrito.`);
   }
   function updateQuantity(productId, value) {
-    setCart(previous => previous.map(line => line.productId === productId ? { ...line, quantity: value } : line));
-  }
-  function normalizeQuantity(productId, value) {
-    const product = products.find(item => item.id === productId);
+    const product = products.find(item => String(item.id) === String(productId));
+    const max = Math.floor(Number(product?.existencia) || 0);
     const n = Number(value);
-    setCart(previous => previous.map(line => line.productId === productId ? { ...line, quantity: quantity(Math.min(Math.max(Number.isFinite(n) ? n : 0.001, 0.001), Number(product?.existencia) || 0.001)) } : line));
+    const next = Math.min(Math.max(1, max), Math.max(1, Number.isFinite(n) ? Math.floor(n) : 1));
+    const current = cart.find(line => line.productId === productId);
+    if (current && next > Number(current.quantity) && !requireCustomer()) return;
+    setCart(previous => previous.map(line => line.productId === productId ? { ...line, quantity: next } : line));
   }
   return <div className="store">
     <header className="store-header">
@@ -55,20 +97,23 @@ export default function Store({ data, customer, feedback, onLogout, page, select
         <button className={page === 'catalogo' || page === 'detalle' ? 'is-active' : ''} onClick={() => navigate('catalogo')}>Catálogo</button>
         <button className={page === 'historial' ? 'is-active' : ''} onClick={() => navigate('historial')}>Mis pedidos</button>
         <button className={page === 'carrito' || page === 'checkout' ? 'is-active' : ''} onClick={() => navigate('carrito')}>Carrito <span className="store-count">{itemCount}</span></button>
-        {customer && <button onClick={onLogout}>Cerrar sesión</button>}
+        {customer ? <button onClick={onLogout}>Cerrar sesión</button> : <button onClick={onLogin}>Iniciar sesión</button>}
         {onBack && <button className="store-back" onClick={onBack}>Volver al panel</button>}
       </nav>
     </header>
     <main className="store-main">
       {feedback && <p role="status">{feedback}</p>}
       {notice && <div className="store-notice" role="status">{notice}<button aria-label="Cerrar aviso" onClick={() => setNotice('')}>×</button></div>}
-      {page === 'catalogo' && <Catalogo shown={shown} query={query} setQuery={setQuery} category={category} setCategory={setCategory} categories={categories} active={active} navigate={navigate} categoryName={categoryName} addToCart={addToCart} />}
-      {page === 'detalle' && <DetalleProducto selected={selected} navigate={navigate} categoryName={categoryName} active={active} addToCart={addToCart} />}
-      {page === 'carrito' && <Carrito cart={cart} cartLines={cartLines} navigate={navigate} setCart={setCart} updateQuantity={updateQuantity} normalizeQuantity={normalizeQuantity} subtotal={subtotal} />}
-      {page === 'checkout' && <Checkout navigate={navigate} cart={cart} />}
-      {page === 'historial' && <Historial customer={customer} customerSales={customerSales} products={products} navigate={navigate} />}
+      {!feedback && <>
+        {page === 'catalogo' && <Catalogo shown={shown} query={query} setQuery={setQuery} category={category} setCategory={setCategory} categories={categories} active={active} navigate={navigate} categoryName={categoryName} addToCart={addToCart} />}
+        {page === 'detalle' && <DetalleProducto selected={selected} token={token} navigate={navigate} categoryName={categoryName} active={active} addToCart={addToCart} />}
+        {page === 'carrito' && <Carrito cart={cart} cartLines={cartLines} navigate={navigate} setCart={setCart} updateQuantity={updateQuantity} subtotal={subtotal} />}
+        {page === 'checkout' && <Checkout navigate={navigate} cart={cart} />}
+        {page === 'historial' && <Historial customer={customer} customerSales={customerSales} products={products} navigate={navigate} onLogin={onLogin} />}
+      </>}
     </main>
     <footer className="store-footer">FerreLSA</footer>
     <Chat chatOpen={chatOpen} onToggle={onChatToggle} />
+    {loginRequired && <LoginRequiredDialog onClose={() => setLoginRequired(false)} onLogin={onLogin} />}
   </div>;
 }

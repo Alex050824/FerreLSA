@@ -57,7 +57,7 @@ export default function Workspace({ data, mutate, page, user, feedback, onNaviga
       <header className="work-topbar"><div className="breadcrumbs">FerreLSA <span>/</span> {active.label}</div><div className="topbar-right"><button className="workspace-link" onClick={onStore}>Ver tienda</button><button className="workspace-link" onClick={onLogout}>Salir</button></div></header>
       <div className="work-content">
         {feedback && <p role="status">{feedback}</p>}
-        {page === 'inicio' ? <Dashboard data={data} navigate={onNavigate} /> : <CurrentPage key={page} data={data} mutate={mutate} currentUser={user} />}
+        {!feedback && (page === 'inicio' ? <Dashboard data={data} navigate={onNavigate} /> : <CurrentPage key={page} data={data} mutate={mutate} currentUser={user} />)}
       </div>
     </main>
   </div>;

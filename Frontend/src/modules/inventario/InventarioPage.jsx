@@ -12,7 +12,11 @@ export default function InventarioPage({ data, mutate }) {
     if (!form.codigo.trim() || !form.nombre.trim() || !form.unidad_medida.trim()) return setError('Completá el código, nombre y unidad de medida.');
     if (products.some(p => String(p.id) !== String(form.id) && p.codigo.toLowerCase() === form.codigo.trim().toLowerCase())) return setError('Ya existe un producto con ese código.');
     if (['precio_compra', 'precio_venta', 'stock_minimo'].some(k => form[k] === '' || !Number.isFinite(Number(form[k])) || Number(form[k]) < 0)) return setError('Los precios y las existencias deben ser números iguales o mayores que cero.');
-    const { id, existencia, ...product } = form;
+    const { id } = form;
+    // Only submit fields accepted by the API, not read-only database columns.
+    const product = Object.fromEntries(Object.keys(emptyProduct)
+      .filter(key => key !== 'existencia')
+      .map(key => [key, form[key]]));
     try {
       await mutate('/admin/productos' + (id ? '/' + id : ''), {
         ...product, categoria_id: product.categoria_id || null, proveedor_id: product.proveedor_id || null,

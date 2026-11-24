@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 
 import Brand from '../../components/Brand.jsx';
 import Icon from '../../components/Icon.jsx';
-import { signIn } from './auth.js';
+import { registerCustomer, signIn } from './auth.js';
 
 export default function Login({ onAuthenticated }) {
   // ==========================================
@@ -15,6 +15,9 @@ export default function Login({ onAuthenticated }) {
   const [showPassword, setShowPassword] = useState(false);
   const [pending, setPending] = useState(false);
   const [feedback, setFeedback] = useState(null);
+  const [registering, setRegistering] = useState(false);
+  const [name, setName] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
 
   // ==========================================
   // MANEJAR INICIO DE SESIÓN
@@ -33,9 +36,32 @@ export default function Login({ onAuthenticated }) {
       return;
     }
 
+    if (registering && !name.trim()) {
+      setFeedback({ type: 'error', text: 'Ingresá tu nombre para crear tu cuenta.' });
+      return;
+    }
+    if (registering && password.length < 8) {
+      setFeedback({ type: 'error', text: 'La contraseña debe tener al menos 8 caracteres.' });
+      return;
+    }
+    if (registering && password !== confirmPassword) {
+      setFeedback({ type: 'error', text: 'Las contraseñas no coinciden.' });
+      return;
+    }
+
     setPending(true);
 
     try {
+      if (registering) {
+        await registerCustomer({ nombre: name.trim(), correo: username.trim(), password });
+        setRegistering(false);
+        setName('');
+        setPassword('');
+        setConfirmPassword('');
+        setShowPassword(false);
+        setFeedback({ type: 'info', text: 'Cuenta creada. Iniciá sesión con tu correo y contraseña.' });
+        return;
+      }
       const session = await signIn({
         username: username.trim(),
         password,
@@ -56,6 +82,14 @@ export default function Login({ onAuthenticated }) {
     }
   }
 
+  function toggleRegistration() {
+    setRegistering(value => !value);
+    setPassword('');
+    setConfirmPassword('');
+    setShowPassword(false);
+    setFeedback(null);
+  }
+
   // ==========================================
   // INTERFAZ DEL LOGIN
   // ==========================================
@@ -70,7 +104,7 @@ export default function Login({ onAuthenticated }) {
           <Icon name="shield" size={16} />
 
           <span>
-            Acceso exclusivo para personal autorizado
+            Acceso a FerreLSA
           </span>
         </div>
       </header>
@@ -85,31 +119,41 @@ export default function Login({ onAuthenticated }) {
             {/* ETIQUETA SUPERIOR */}
             <div className="eyebrow">
               <span className="eyebrow__line" />
-              PORTAL INTERNO · FERRELSA ERP
+              {registering ? 'CUENTA DE CLIENTE · FERRELSA' : 'BIENVENIDO A FERRELSA'}
             </div>
 
             {/* TÍTULO */}
             <h1>
-              Iniciar sesión
+              {registering ? 'Crear cuenta' : 'Iniciar sesión'}
               <span className="orange-dot">.</span>
             </h1>
 
             <p className="login-intro">
-              Ingresá tus credenciales para acceder
-              al sistema de gestión empresarial.
+              {registering
+                ? 'Registrate para acceder a la tienda en línea.'
+                : 'Ingresá tus credenciales para acceder a tu cuenta.'}
             </p>
 
             {/* FORMULARIO */}
             <form
               className="login-form"
               onSubmit={handleSubmit}
-              noValidate
             >
+
+              {registering && <div className="field">
+                <label htmlFor="customer-name">Nombre</label>
+                <span className="field__input-wrap">
+                  <Icon name="user" size={19} />
+                  <input id="customer-name" type="text" autoComplete="given-name" maxLength={255}
+                    placeholder="Ingresá tu nombre" value={name} onChange={event => setName(event.target.value)}
+                    disabled={pending} required />
+                </span>
+              </div>}
 
               {/* CAMPO USUARIO */}
               <div className="field">
                 <label htmlFor="username">
-                  Usuario o correo electrónico
+                  Correo electrónico
                 </label>
 
                 <span className="field__input-wrap">
@@ -117,14 +161,16 @@ export default function Login({ onAuthenticated }) {
 
                   <input
                     id="username"
-                    type="text"
-                    placeholder="Ingresá tu usuario"
+                    type="email"
+                    placeholder="Ingresá tu correo electrónico"
                     autoComplete="username"
                     value={username}
                     onChange={(e) =>
                       setUsername(e.target.value)
                     }
                     disabled={pending}
+                    maxLength={255}
+                    required
                   />
                 </span>
               </div>
@@ -146,12 +192,15 @@ export default function Login({ onAuthenticated }) {
                         : 'password'
                     }
                     placeholder="Ingresá tu contraseña"
-                    autoComplete="current-password"
+                    autoComplete={registering ? 'new-password' : 'current-password'}
                     value={password}
                     onChange={(e) =>
                       setPassword(e.target.value)
                     }
                     disabled={pending}
+                    minLength={registering ? 8 : undefined}
+                    maxLength={128}
+                    required
                   />
 
                   {/* MOSTRAR / OCULTAR CONTRASEÑA */}
@@ -179,6 +228,16 @@ export default function Login({ onAuthenticated }) {
                 </span>
               </div>
 
+              {registering && <div className="field">
+                <label htmlFor="confirm-password">Confirmar contraseña</label>
+                <span className="field__input-wrap">
+                  <Icon name="lock" size={19} />
+                  <input id="confirm-password" type="password" autoComplete="new-password" maxLength={128}
+                    placeholder="Repetí tu contraseña" value={confirmPassword}
+                    onChange={event => setConfirmPassword(event.target.value)} disabled={pending} required />
+                </span>
+              </div>}
+
               {/* MENSAJES DEL FORMULARIO */}
               {feedback && (
                 <div
@@ -196,12 +255,19 @@ export default function Login({ onAuthenticated }) {
                 disabled={pending}
               >
                 {pending
-                  ? 'Verificando acceso…'
-                  : 'Ingresar al sistema'}
+                  ? (registering ? 'Creando cuenta…' : 'Verificando acceso…')
+                  : (registering ? 'Crear cuenta de cliente' : 'Ingresar al sistema')}
 
                 <Icon name="arrow" size={20} />
               </button>
             </form>
+
+            <p className="login-panel__register">
+              {registering ? '¿Ya tenés una cuenta?' : '¿No tenés una cuenta?'}{' '}
+              <button type="button" onClick={toggleRegistration} disabled={pending}>
+                {registering ? 'Iniciá sesión' : 'Registrate como cliente'}
+              </button>
+            </p>
 
             {/* AYUDA DE ACCESO */}
             <div className="login-panel__help">
