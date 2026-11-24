@@ -1,0 +1,3 @@
+.ops-line-add { display: grid; grid-template-columns: minmax(0, 1fr) 130px auto; gap: 12px; align-items: end; margin-bottom: 14px; }
+.ops-totals { margin-top: 18px; }
+@media (max-width: 680px) { .ops-line-add { grid-template-columns: 1fr 95px; } .ops-line-add .ops-field:first-child { grid-column: 1 / -1; } }

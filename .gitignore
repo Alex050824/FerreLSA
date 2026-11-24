@@ -1,0 +1,5 @@
+Chatbot/.venv/
+**/__pycache__/
+*.pyc
+Chatbot/.env
+Chatbot/db.sqlite3

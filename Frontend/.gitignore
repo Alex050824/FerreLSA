@@ -1,5 +1,24 @@
-node_modules/
-dist/
+Chatbot/.venv/
+Chatbot/.env
+Chatbot/db.sqlite3
+**/__pycache__/
+*.pyc
+
+# Dependencias de React
+Frontend/node_modules/
+Frontend/dist/
+
+# Entorno virtual de Python
+Chatbot/.venv/
+
+# Archivos privados
 .env
-.env.*
-!.env.example
+**/.env
+*.sqlite3
+
+# Archivos temporales de Python
+__pycache__/
+*.pyc
+
+# Caché de pruebas
+.pytest_cache/

@@ -1,43 +1,55 @@
-# FerreLSA ERP — Prototipo de frontend
+# FerreLSA — frontend
 
-Aplicación React y Vite con una pantalla de acceso y una vista previa de los módulos del ERP. Los registros, indicadores y acciones de la vista previa son ilustrativos; no guardan cambios ni procesan operaciones reales.
+Aplicación React y Vite para el panel administrativo y la tienda de FerreLSA. Las vistas usan datos de demostración compartidos, basados en el esquema SQL del proyecto. Los cambios existen solo en memoria: se pierden al recargar o cerrar la página y no se sincronizan entre navegadores.
 
-## Ejecutar localmente
+## Ejecutar
 
-Desde la carpeta `Frontend`, ejecutar en PowerShell:
+Desde la carpeta `Frontend` en PowerShell:
 
 ```powershell
 npm.cmd install
 npm.cmd run dev
 ```
 
-Abrir la dirección local que indique Vite. Para comprobar la compilación de producción, ejecutar `npm.cmd run build`.
+Abrí la dirección que indica Vite. Para comprobar la compilación: `npm.cmd run build`.
 
-## Organización
+Desde el acceso se puede entrar al panel o a la tienda de demostración. No es una autenticación ni un control de permisos. No ingresés datos reales en las vistas de prueba.
+
+## Alcance actual
+
+- Administración: productos e inventario, proveedores, órdenes de compra, ventas locales, usuarios y sentimientos de comentarios.
+- Tienda: catálogo, detalle de productos, comentarios, carrito, checkout, historial y ventana visual de chat.
+- Los productos, usuarios, compras, ventas, comentarios y movimientos de ejemplo viven en `src/data/demoData.js` y en el estado de React. Las operaciones de las vistas modifican únicamente ese estado.
+- Las imágenes suministradas en la demostración tampoco se envían a un servidor. El almacenamiento de imágenes debe acordarse con el backend.
+- El pago de PayPal, el chatbot y el análisis de sentimientos no se ejecutan: requieren servicios reales. Los comentarios nuevos reciben una clasificación provisional.
+
+## Integración futura
+
+`src/modules/acceso/auth.js` conserva un punto de integración opcional para el inicio de sesión mediante `VITE_LOGIN_ENDPOINT`; su contrato `{ username, password }` es provisional. El backend deberá definir el contrato de autenticación, el manejo del JWT o sesión y la autorización por roles. Las rutas de demostración no deben considerarse protegidas.
+
+Para conectar los módulos, reemplazá el estado de demostración por servicios que consuman los endpoints acordados. Coordiná los nombres de campos, respuestas de errores, paginación, carga de imágenes, cálculo de impuestos, validación de existencias y transiciones de estado. La validación y los cálculos definitivos deben ejecutarse también en el servidor. Las variables `VITE_*` son públicas y no deben contener secretos.
+
+## Organización del código
 
 ```text
 src/
-├── components/       # Componentes reutilizables: marca, tabla e iconos
-├── layouts/          # Estructura y navegación de la vista previa
-├── modules/          # Configuración y datos de cada módulo
-│   ├── ventas/
-│   ├── inventario/
-│   ├── compras/
-│   ├── facturacion/
-│   ├── clientes/
-│   ├── proveedores/
-│   └── administracion/
-├── pages/            # Acceso, panel principal y pantalla de módulo compartida
-├── services/         # Punto de integración de acceso existente
-├── App.jsx           # Selección entre acceso y vista previa
-├── main.jsx          # Punto de entrada de React
-└── styles.css        # Estilos compartidos
+├── App.jsx                   # Selección de vista y estado compartido de demostración
+├── components/               # Marca, iconos y controles compartidos de administración
+├── data/                     # Datos iniciales de demostración
+├── layouts/                  # Estructura y navegación del panel
+├── styles/                   # Estilos base y del panel compartidos
+└── modules/
+    ├── acceso/               # Inicio de sesión, estilos y servicio de acceso
+    ├── inicio/               # Resumen del panel
+    ├── inventario/           # Productos, existencias y movimientos
+    ├── proveedores/          # Gestión de proveedores
+    ├── compras/              # Órdenes de compra
+    ├── ventas/               # Ventas locales
+    ├── usuarios/             # Perfiles y roles
+    ├── sentimientos/         # Consulta de comentarios clasificados
+    ├── operaciones/          # Elementos compartidos de ventas, usuarios y sentimientos
+    └── tienda/               # Catálogo, detalle, carrito, checkout, historial y chat
+        └── components/       # Una vista o componente por parte de la tienda
 ```
 
-Cada carpeta de `modules/` contiene la configuración de navegación, las columnas y los datos de ejemplo de su sección. `modules/index.js` reúne los módulos para la navegación y las pantallas compartidas. Las fotografías de productos son un requisito pendiente: la vista actual no permite cargarlas ni mostrarlas.
-
-## Acceso y alcance
-
-La vista previa se abre desde la pantalla de acceso sin autenticación. El formulario de acceso conserva el servicio existente en `src/services/auth.js`: si se configura `VITE_LOGIN_ENDPOINT`, intenta enviar las credenciales a ese endpoint; sin configurar ese valor, informa que el acceso no está conectado. No hay backend ni base de datos en este proyecto. La respuesta exitosa actualmente muestra un mensaje, pero no navega automáticamente al panel.
-
-Las variables `VITE_*` son públicas en el navegador y no deben contener secretos. La misión y la visión mostradas son textos propuestos para el proyecto académico.
+Las vistas administrativas reciben los datos y la función de actualización desde `App.jsx` a través de `Workspace.jsx`. Para integrar un módulo, incorporá sus servicios de API en su carpeta y sustituí gradualmente el acceso al estado de demostración, respetando el contrato que acuerden con el backend.

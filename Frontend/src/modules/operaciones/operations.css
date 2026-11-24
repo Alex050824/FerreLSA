@@ -1,0 +1,21 @@
+.ops-panel { padding: 22px; margin-bottom: 18px; }
+.ops-panel h2 { margin: 0; color: #193652; font-size: 18px; }
+.ops-panel h3 { margin: 24px 0 12px; font-size: 14px; color: #193652; }
+.ops-panel-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 20px; }
+.ops-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.ops-field { display: flex; flex-direction: column; gap: 7px; min-width: 0; color: #405a72; font-size: 12px; font-weight: 700; }
+.ops-field--wide { grid-column: 1 / -1; }
+.ops-field input, .ops-field select, .ops-field textarea, .ops-toolbar input, .ops-filter select { width: 100%; min-height: 40px; border: 1px solid #dce4ec; border-radius: 8px; padding: 9px 11px; background: #fff; color: #28435e; font: inherit; font-size: 13px; }
+.ops-field textarea { min-height: 70px; resize: vertical; }
+.ops-secondary { min-height: 40px; padding: 9px 14px; border: 1px solid #d9e3ed; border-radius: 8px; background: #fff; color: #315a7b; font-size: 12px; font-weight: 700; }
+.ops-secondary:hover { background: #f5f9fc; }
+.ops-link { border: 0; background: none; padding: 4px; color: #2e6fa6; font: inherit; font-size: 11px; font-weight: 700; }
+.ops-link:hover { color: #e87525; }
+.ops-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+.ops-note { border: 1px solid #dbeaf7; border-radius: 9px; background: #f0f7fc; color: #456d8a; padding: 11px 14px; font-size: 12px; line-height: 1.5; margin: 0 0 18px; }
+.ops-error { border-radius: 8px; background: #fff1ee; padding: 10px 12px; color: #a63c30; font-size: 12px; }
+.ops-muted { color: #778a9d; font-size: 12px; line-height: 1.6; }
+.ops-total { color: #294965; font-size: 13px; font-weight: 750; line-height: 1.7; }
+.ops-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 14px; padding: 14px 17px; margin-bottom: 14px; border: 1px solid #e8edf2; border-radius: 10px; background: #fff; color: #6d8195; font-size: 12px; }
+.ops-toolbar > input { max-width: 300px; }
+@media (max-width: 680px) { .ops-panel { padding: 16px; } .ops-grid { grid-template-columns: 1fr; } .ops-field--wide { grid-column: auto; } .ops-toolbar { align-items: stretch; flex-direction: column; } .ops-toolbar > input { max-width: none; } }
