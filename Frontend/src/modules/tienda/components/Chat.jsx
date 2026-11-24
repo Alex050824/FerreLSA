@@ -2,15 +2,34 @@
 import React, { useState } from 'react';
 import { id } from '../utils.js';
 
-// Obtener la cookie de seguridad de Django
-function obtenerCookie(nombre) {
+function leerTokenCsrf() {
+  const prefijo = 'csrftoken=';
   const cookie = document.cookie
     .split('; ')
-    .find(valor => valor.startsWith(nombre + '='));
+    .find(valor => valor.startsWith(prefijo));
 
-  return cookie
-    ? decodeURIComponent(cookie.substring(nombre.length + 1))
-    : null;
+  return cookie?.slice(prefijo.length);
+}
+
+async function renovarTokenCsrf() {
+  const respuesta = await fetch('/api/chatbot/csrf/', { credentials: 'same-origin' });
+  if (!respuesta.ok) throw new Error('No se pudo obtener la protección CSRF.');
+
+  const token = leerTokenCsrf();
+  if (!token) throw new Error('No se encontró el token CSRF.');
+  return token;
+}
+
+function enviarPregunta(pregunta, token) {
+  return fetch('/api/chatbot/preguntar/', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': token
+    },
+    body: JSON.stringify({ pregunta })
+  });
 }
 
 export default function Chat({ chatOpen, onToggle }) {
@@ -37,31 +56,11 @@ export default function Chat({ chatOpen, onToggle }) {
     setEnviando(true);
 
     try {
-      // Obtener la cookie CSRF de Django
-      const csrfRespuesta = await fetch('/api/chatbot/csrf/', {
-        credentials: 'same-origin'
-      });
-
-      if (!csrfRespuesta.ok) {
-        throw new Error('No se pudo obtener la protección CSRF.');
+      const token = leerTokenCsrf() || await renovarTokenCsrf();
+      let respuesta = await enviarPregunta(pregunta, token);
+      if (respuesta.status === 403) {
+        respuesta = await enviarPregunta(pregunta, await renovarTokenCsrf());
       }
-
-      const csrfToken = obtenerCookie('csrftoken');
-
-      if (!csrfToken) {
-        throw new Error('No se encontró el token CSRF.');
-      }
-
-      // Enviar la pregunta a Qwen mediante Django
-      const respuesta = await fetch('/api/chatbot/preguntar/', {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': csrfToken
-        },
-        body: JSON.stringify({ pregunta })
-      });
 
       const datos = await respuesta.json();
 

@@ -100,15 +100,16 @@ class IndiceCatalogo:
 
         if self.pasajes == pasajes:
             return self.matriz
-        unicos = dict.fromkeys(pasajes)
-        nuevos = [texto for texto in unicos if texto not in self.vectores]
-        vectores = {texto: self.vectores[texto] for texto in unicos if texto in self.vectores}
+        posiciones = {texto: i for i, texto in enumerate(pasajes)}
+        nuevos = [texto for texto in posiciones if texto not in self.vectores]
+        vectores = self.vectores.copy()
         if nuevos:
             lote = convertir_a_vectores(["passage: " + texto for texto in nuevos])
-            # Copias independientes para poder liberar productos dados de baja.
-            vectores.update((texto, vector.clone()) for texto, vector in zip(nuevos, lote))
+            vectores.update(zip(nuevos, lote))
         matriz = torch.stack([vectores[texto] for texto in pasajes]) if pasajes else None
-        self.pasajes, self.vectores, self.matriz = pasajes, vectores, matriz
+        # Cada texto vigente apunta a una fila de la nueva matriz y comparte su memoria.
+        vistas = {texto: matriz[i] for texto, i in posiciones.items()}
+        self.pasajes, self.vectores, self.matriz = pasajes, vistas, matriz
         return matriz
 
 
@@ -198,7 +199,7 @@ def _candidatos_semanticos(pregunta, productos):
     coincidencias = [
         pedidos & (_terminos(nombre) | _terminos(descripcion)) for nombre, descripcion in campos
     ]
-    frecuencia = {p: sum(p in conjunto for conjunto in coincidencias) for p in pedidos}
+    frecuencia = Counter(p for conjunto in coincidencias for p in conjunto)
     puntaje_textual = [sum(1 / frecuencia[p] for p in conjunto) for conjunto in coincidencias]
     por_texto = sorted(
         (i for i in range(len(productos)) if coincidencias[i]),
