@@ -107,7 +107,7 @@
 .store-chat-header button { border: 0; background: none; color: white; font-size: 24px; }
 .store-chat-body { flex: 1; overflow: auto; padding: 15px; background: #f5f7fa; }
 .store-chat-body p { width: fit-content; max-width: 85%; border-radius: 12px; padding: 10px; font-size: 13px; line-height: 1.5; }
-.store-chat-reply { background: white; color: #607186; }
+.store-chat-reply { background: white; color: #607186; white-space: pre-line; }
 .store-chat-message { margin-left: auto; background: #ffead9; color: #5f4935; overflow-wrap: anywhere; }
 .store-chat form { display: flex; gap: 7px; padding: 10px; }
 .store-chat form button { border: 0; background: #ef7f2d; border-radius: 8px; color: white; padding: 8px; font-size: 12px; }
