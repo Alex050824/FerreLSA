@@ -77,6 +77,17 @@ def product_detail(request, pk):
     return response(one(f"SELECT {PUBLIC_PRODUCT} FROM productos WHERE id = %s AND activo = 1", (record_id(pk),)))
 
 
+@endpoint("GET")
+def product_comments(request, pk):
+    product_id = record_id(pk)
+    one("SELECT id FROM productos WHERE id = %s AND activo = 1", (product_id,))
+    sql = (
+        "SELECT c.id, c.producto_id, c.comentario, c.fecha, u.nombre, u.apellido "
+        "FROM comentarios_productos c JOIN usuarios u ON u.id = c.usuario_id "
+    )
+    return response(query(sql + "WHERE c.producto_id = %s ORDER BY c.fecha DESC, c.id DESC", (product_id,)))
+
+
 def lock_products(ids):
     return {pk: one("SELECT * FROM productos WHERE id = %s FOR UPDATE", (pk,)) for pk in sorted(set(ids))}
 

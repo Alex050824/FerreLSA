@@ -15,16 +15,17 @@ export default function App() {
   const [verified, setVerified] = useState(null);
   const [validationError, setValidationError] = useState('');
   const [snapshot, setSnapshot] = useState(null);
+  const [cart, setCart] = useState([]);
   const [load, setLoad] = useState({ pending: true, error: '' });
   const [revision, setRevision] = useState(0);
   const route = path.replace(/\/$/, '');
   const adminRoute = route === '/admin' || route.startsWith('/admin/');
-  const storeRoute = route === '/tienda' || route.startsWith('/tienda/');
+  const storeRoute = route === '' || route === '/tienda' || route.startsWith('/tienda/');
   const accessArea = adminRoute ? 'admin' : storeRoute ? 'store' : null;
   const token = session?.token;
   const currentUser = token && verified?.token === token && verified.area === accessArea ? verified.user : null;
   const admin = adminRoute && currentUser?.rol === 'ADMIN';
-  const store = storeRoute && ['ADMIN', 'CLIENTE'].includes(currentUser?.rol);
+  const store = storeRoute;
 
   useEffect(() => {
     if (!accessArea) {
@@ -36,7 +37,7 @@ export default function App() {
       setPath(destination);
     }
     if (!token) {
-      redirect('/login');
+      if (adminRoute) redirect('/login');
       return;
     }
     const controller = new AbortController();
@@ -46,7 +47,9 @@ export default function App() {
       if (!['ADMIN', 'CLIENTE'].includes(user.rol)) {
         sessionStorage.removeItem('ferrelsa.session');
         setSession(null);
-        redirect('/login');
+        setVerified(null);
+        setCart([]);
+        if (adminRoute) redirect('/login');
         return;
       }
       if (accessArea === 'admin' && user.rol !== 'ADMIN') {
@@ -59,7 +62,9 @@ export default function App() {
       if (error.status === 401) {
         sessionStorage.removeItem('ferrelsa.session');
         setSession(null);
-        redirect('/login');
+        setVerified(null);
+        setCart([]);
+        if (adminRoute) redirect('/login');
       } else {
         setValidationError('No se pudo verificar tu sesión. Recargá la página para volver a intentar.');
       }
@@ -70,7 +75,8 @@ export default function App() {
   useEffect(() => {
     if (!admin && !store) return;
     const controller = new AbortController();
-    const options = { token: session?.token, signal: controller.signal };
+    const activeSession = currentUser ? session : null;
+    const options = { token: activeSession?.token, signal: controller.signal };
     const read = path => api(path, options);
     setLoad({ pending: true, error: '' });
     async function loadData() {
@@ -78,7 +84,7 @@ export default function App() {
         ? { productos: '/admin/productos', categorias: '/admin/categorias', proveedores: '/admin/proveedores',
             movimientos: '/inventario/movimientos', compras: '/compras', ventas: '/ventas', usuarios: '/usuarios',
             comentarios: '/admin/comentarios' }
-        : { productos: '/productos', categorias: '/categorias', ...(session && { ventas: '/ventas' }) };
+        : { productos: '/productos', categorias: '/categorias', ...(activeSession && { ventas: '/ventas' }) };
       const entries = await Promise.all(Object.entries(paths).map(async ([key, path]) => [key, await read(path)]));
       const next = { ...emptyData, ...Object.fromEntries(entries) };
       if (admin) {
@@ -89,11 +95,11 @@ export default function App() {
         const details = new Map(localSales.map(row => [row.id, row]));
         next.compras = purchases;
         next.ventas = next.ventas.map(row => details.get(row.id) ?? row);
-      } else if (session) {
+      } else if (activeSession) {
         next.ventas = await Promise.all(next.ventas.map(row => read('/ventas/' + row.id)));
       }
       if (!controller.signal.aborted) {
-        setSnapshot({ admin, session, data: next });
+        setSnapshot({ admin, session: activeSession, data: next });
         setLoad({ pending: false, error: '' });
       }
     }
@@ -104,10 +110,12 @@ export default function App() {
       if (error.status === 401 || (admin && error.status === 403)) {
         sessionStorage.removeItem('ferrelsa.session');
         setSession(null);
+        setVerified(null);
+        setCart([]);
       }
     });
     return () => controller.abort();
-  }, [admin, store, session, revision]);
+  }, [admin, store, session, currentUser, revision]);
 
   useEffect(() => {
     const syncPath = () => setPath(window.location.pathname);
@@ -134,12 +142,13 @@ export default function App() {
     setSession(null);
     setVerified(null);
     setSnapshot(null);
-    navigate('/login', { replace: true });
+    setCart([]);
+    navigate('/', { replace: true });
   }
 
-  const data = snapshot?.admin === admin && snapshot.session === session ? snapshot.data : emptyData;
+  const data = snapshot?.admin === admin && snapshot.session === (currentUser ? session : null) ? snapshot.data : emptyData;
   const feedback = load.pending ? 'Cargando datos…' : load.error;
-  if (accessArea && !admin && !store) {
+  if (adminRoute && !admin) {
     return <main className="container"><p role="status">{validationError || 'Verificando acceso…'}</p></main>;
   }
   if (store) {
@@ -147,20 +156,21 @@ export default function App() {
     const storePath = chatOpen ? route.slice(0, -'/chat'.length) : route;
     const productId = /^\/tienda\/productos\/([\w-]+)$/.exec(storePath)?.[1];
     const section = /^\/tienda\/([^/]+)$/.exec(storePath)?.[1];
-    const page = productId ? 'detalle' : storePath === '/tienda' ? 'catalogo' : storePages.get(section);
+    const page = productId ? 'detalle' : storePath === '' || storePath === '/tienda' ? 'catalogo' : storePages.get(section);
     const adminReturn = window.history.state?.adminReturn;
     const goToStore = destination => navigate(destination, { state: { adminReturn } });
     if (page) {
-      return <Store data={data} customer={currentUser} feedback={feedback} page={page}
-        selectedId={productId} onLogout={logout}
+      return <Store data={data} cart={cart} setCart={setCart} customer={currentUser} token={currentUser ? token : undefined}
+        verifyingSession={Boolean(token && !currentUser && !validationError)} feedback={feedback} page={page}
+        selectedId={productId} onLogout={logout} onLogin={() => navigate('/login', { state: { returnTo: route || '/' } })}
         onNavigate={(next, id) => {
           const destination = next === 'detalle' ? '/tienda/productos/' + encodeURIComponent(id)
             : next === 'historial' ? '/tienda/pedidos'
-            : next === 'catalogo' ? '/tienda' : '/tienda/' + next;
+            : next === 'catalogo' ? (chatOpen ? '/tienda' : '/') : '/tienda/' + next;
           goToStore(destination + (chatOpen ? '/chat' : ''));
         }}
-        chatOpen={chatOpen} onChatToggle={() => goToStore(chatOpen ? storePath : storePath + '/chat')}
-        onBack={currentUser.rol === 'ADMIN' && adminReturn ? () => navigate(adminReturn) : undefined} />;
+        chatOpen={chatOpen} onChatToggle={() => goToStore(chatOpen ? storePath : (storePath || '/tienda') + '/chat')}
+        onBack={currentUser?.rol === 'ADMIN' ? () => navigate(adminReturn || '/admin') : undefined} />;
     }
   }
   const adminPage = route === '/admin' ? 'inicio' : /^\/admin\/([^/]+)$/.exec(route)?.[1];
@@ -173,12 +183,14 @@ export default function App() {
   if (route && route !== '/login' && !adminRoute) {
     return <main className="container">
       <h1>Página no encontrada</h1>
-      <button type="button" onClick={() => navigate('/login')}>Volver al inicio</button>
+      <button type="button" onClick={() => navigate('/')}>Volver al inicio</button>
     </main>;
   }
   return <Login onAuthenticated={next => {
     sessionStorage.setItem('ferrelsa.session', JSON.stringify(next));
     setSession(next);
-    navigate(next.usuario.rol === 'ADMIN' ? '/admin' : '/tienda');
+    const returnTo = window.history.state?.returnTo;
+    navigate(returnTo === '/' || returnTo === '/tienda' || returnTo?.startsWith('/tienda/')
+      ? returnTo : next.usuario.rol === 'ADMIN' ? '/admin' : '/');
   }} />;
 }

@@ -10,7 +10,8 @@ export default function ProveedoresPage({data,mutate}) {
   async function save(event) {
     event.preventDefault();
     setError('');
-    const { id, ...supplier } = form;
+    const { id } = form;
+    const supplier = Object.fromEntries(Object.keys(emptySupplier).map(key => [key, form[key]]));
     try {
       await mutate('/admin/proveedores' + (id ? '/' + id : ''), { ...supplier, activo: Boolean(supplier.activo) }, id ? 'PATCH' : 'POST');
       setForm(null);

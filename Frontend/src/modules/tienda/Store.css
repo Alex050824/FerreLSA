@@ -55,6 +55,13 @@
 .store-link { padding: 0; border: 0; background: none; color: #df7527; font-weight: 700; font-size: 13px; }
 .store-notice { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 14px 18px; margin-bottom: 20px; border: 1px solid #ffdfbd; border-radius: 10px; background: #fff7ee; color: #815326; font-size: 13px; }
 .store-notice button { background: none; border: 0; color: inherit; font-size: 22px; }
+.store-login-dialog { width: min(420px, calc(100% - 32px)); max-width: none; padding: 28px; border: 0; border-radius: 16px; color: #132a46; background: #fff; box-shadow: 0 20px 70px #10283e55; }
+.store-login-dialog::backdrop { background: #10283e99; }
+.store-login-dialog h2 { margin: 0 0 12px; font-size: 21px; }
+.store-login-dialog p { margin: 0; color: #66798c; font-size: 14px; line-height: 1.6; }
+.store-login-dialog__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 12px; margin-top: 24px; }
+.store-login-dialog__cancel { padding: 12px 17px; border: 1px solid #dce4ec; border-radius: 9px; background: white; color: #173453; font-size: 13px; font-weight: 700; }
+.store-login-dialog button:focus-visible { outline: 3px solid #ffb779; outline-offset: 2px; }
 .store-detail { display: grid; grid-template-columns: 1fr 1fr; gap: 45px; margin: 22px 0 35px; padding: 25px; background: white; border: 1px solid #e5ebf1; border-radius: 16px; }
 .store-detail .store-image { height: 380px; border-radius: 11px; }
 .store-detail > div:last-child { align-self: center; }

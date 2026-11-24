@@ -203,6 +203,27 @@
   border-color: #f8d9d4;
 }
 
+.login-panel__register {
+  margin: 22px 0 0;
+  color: #546b82;
+  font-size: 12px;
+  text-align: center;
+}
+
+.login-panel__register button {
+  padding: 3px;
+  border: 0;
+  background: transparent;
+  color: #bd5415;
+  font-weight: 780;
+  text-decoration: underline;
+}
+
+.login-panel__register button:disabled {
+  cursor: wait;
+  opacity: .6;
+}
+
 .login-panel__help {
   display: flex;
   gap: 12px;

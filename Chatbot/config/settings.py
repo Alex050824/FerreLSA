@@ -22,9 +22,12 @@ from dotenv import load_dotenv
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 # Django se inicia desde Chatbot/, con la aplicación ERP en la carpeta hermana Backend/.
-PROJECT_ROOT = str(BASE_DIR.parent)
-if PROJECT_ROOT not in sys.path:
-    sys.path.insert(0, PROJECT_ROOT)
+PROJECT_ROOT = BASE_DIR.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+# Las variables del entorno tienen prioridad; el archivo anterior se conserva
+# como respaldo para instalaciones que todavía lo utilicen.
+load_dotenv(PROJECT_ROOT / ".env")
 load_dotenv(BASE_DIR / ".env")
 
 ERP_JWT_SECRET = os.getenv("ERP_JWT_SECRET", "")

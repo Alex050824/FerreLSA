@@ -26,6 +26,7 @@ urlpatterns = [
     re_path(r"^usuarios/(?P<pk>[0-9]+)/?$", users.user_detail),
     re_path(r"^categorias/?$", inventory.categories),
     re_path(r"^productos/?$", inventory.products),
+    re_path(r"^productos/(?P<pk>[0-9]+)/comentarios/?$", inventory.product_comments),
     re_path(r"^productos/(?P<pk>[0-9]+)/?$", inventory.product_detail),
     re_path(r"^admin/(?P<resource>categorias|proveedores|productos)/?$", inventory.catalog),
     re_path(r"^admin/(?P<resource>categorias|proveedores|productos)/(?P<pk>[0-9]+)/?$", inventory.catalog_detail),
