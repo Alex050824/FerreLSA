@@ -11,13 +11,31 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+from decimal import Decimal, InvalidOperation
 import os
+import sys
+from urllib.parse import unquote, urlsplit
+
+from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+# Django se inicia desde Chatbot/, con la aplicación ERP en la carpeta hermana Backend/.
+PROJECT_ROOT = str(BASE_DIR.parent)
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
 load_dotenv(BASE_DIR / ".env")
 
+ERP_JWT_SECRET = os.getenv("ERP_JWT_SECRET", "")
+ERP_PAYPAL_SECRET = os.getenv("PAYPAL_INTEGRATION_SECRET", "")
+ERP_PAYPAL_CURRENCY = os.getenv("PAYPAL_MONEDA", "")
+try:
+    ERP_TAX_RATE = Decimal(os.getenv("TASA_IMPUESTO", "0"))
+except InvalidOperation:
+    raise ImproperlyConfigured("TASA_IMPUESTO debe ser una fracción entre 0 y 1.") from None
+if not ERP_TAX_RATE.is_finite() or not 0 <= ERP_TAX_RATE <= 1:
+    raise ImproperlyConfigured("TASA_IMPUESTO debe ser una fracción entre 0 y 1.")
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
@@ -41,6 +59,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'chatbot_api',
+    'Backend.erp_api',
 ]
 
 MIDDLEWARE = [
@@ -86,6 +105,35 @@ DATABASES = {
         'PORT': os.getenv('DB_PORT'),
     }
 }
+
+database_url = os.getenv('DATABASE_URL')
+if database_url:
+    try:
+        mysql_url = urlsplit(database_url)
+        mysql_port = mysql_url.port or 3306
+        mysql_database = unquote(mysql_url.path.removeprefix('/'))
+        if (
+            mysql_url.scheme != 'mysql'
+            or not mysql_url.hostname
+            or not mysql_url.username
+            or not mysql_database
+            or mysql_url.query
+            or mysql_url.fragment
+        ):
+            raise ValueError
+    except ValueError:
+        raise ImproperlyConfigured(
+            'DATABASE_URL debe tener el formato mysql://usuario:contraseña@host:puerto/base '
+            'con los caracteres especiales de las credenciales codificados en la URL.'
+        ) from None
+
+    DATABASES['default'].update(
+        NAME=mysql_database,
+        USER=unquote(mysql_url.username),
+        PASSWORD=unquote(mysql_url.password or ''),
+        HOST=mysql_url.hostname,
+        PORT=mysql_port,
+    )
 
 
 # Password validation

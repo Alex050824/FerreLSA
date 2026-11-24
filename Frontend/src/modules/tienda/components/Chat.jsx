@@ -13,8 +13,8 @@ function obtenerCookie(nombre) {
     : null;
 }
 
-export default function Chat() {
-  const [chatOpen, setChatOpen] = useState(false);
+export default function Chat({ chatOpen, onToggle }) {
+
   const [chatText, setChatText] = useState('');
   const [chatMessages, setChatMessages] = useState([]);
   const [enviando, setEnviando] = useState(false);
@@ -108,7 +108,7 @@ export default function Chat() {
             </div>
 
             <button
-              onClick={() => setChatOpen(false)}
+              onClick={onToggle}
               aria-label="Cerrar chat"
             >
               ×
@@ -162,7 +162,7 @@ export default function Chat() {
 
       <button
         className="store-chat-toggle"
-        onClick={() => setChatOpen(value => !value)}
+        onClick={onToggle}
         aria-expanded={chatOpen}
         aria-label={chatOpen ? 'Cerrar chat' : 'Abrir chat'}
       >

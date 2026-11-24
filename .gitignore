@@ -3,3 +3,9 @@ Chatbot/.venv/
 *.pyc
 Chatbot/.env
 Chatbot/db.sqlite3
+
+node_modules/
+dist/
+.env
+.env.*
+!.env.example

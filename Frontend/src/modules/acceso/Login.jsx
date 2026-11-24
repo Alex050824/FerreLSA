@@ -3,12 +3,9 @@ import React, { useState } from 'react';
 
 import Brand from '../../components/Brand.jsx';
 import Icon from '../../components/Icon.jsx';
-import {
-  signIn,
-  AuthNotConfiguredError,
-} from './auth.js';
+import { signIn } from './auth.js';
 
-export default function Login({ onPreview, onStore, onAuthenticated }) {
+export default function Login({ onAuthenticated }) {
   // ==========================================
   // ESTADOS
   // ==========================================
@@ -39,20 +36,17 @@ export default function Login({ onPreview, onStore, onAuthenticated }) {
     setPending(true);
 
     try {
-      await signIn({
+      const session = await signIn({
         username: username.trim(),
         password,
       });
 
       setPassword('');
 
-      onAuthenticated();
+      onAuthenticated(session);
     } catch (error) {
       setFeedback({
-        type:
-          error instanceof AuthNotConfiguredError
-            ? 'info'
-            : 'error',
+        type: 'error',
         text:
           error.message ||
           'Ocurrió un problema al intentar ingresar.',
@@ -70,7 +64,7 @@ export default function Login({ onPreview, onStore, onAuthenticated }) {
     <>
       {/* HEADER */}
       <header className="site-header container">
-        <Brand onClick={onPreview} />
+        <Brand />
 
         <div className="header-context">
           <Icon name="shield" size={16} />
@@ -225,19 +219,6 @@ export default function Login({ onPreview, onStore, onAuthenticated }) {
               </p>
             </div>
 
-            {/* ACCESO A VISTA PREVIA */}
-            <button
-              className="preview-link"
-              type="button"
-              onClick={onPreview}
-            >
-              Explorar vista previa del sistema
-
-              <Icon name="arrow" size={16} />
-            </button>
-            <button className="preview-link" type="button" onClick={onStore}>
-              Visitar tienda de demostración <Icon name="arrow" size={16} />
-            </button>
           </div>
         </section>
 

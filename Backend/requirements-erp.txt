@@ -1,0 +1,4 @@
+Django==5.2.19
+PyMySQL==1.2.4
+python-dotenv==1.2.4
+PyJWT==2.15.1

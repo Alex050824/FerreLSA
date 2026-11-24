@@ -1,8 +1,8 @@
 import React from 'react';
 import ProductImage from './ProductImage.jsx';
-import { money, customerName } from '../utils.js';
+import { money } from '../utils.js';
 
-export default function DetalleProducto({ selected, navigate, categoryName, active, addToCart, submitComment, comment, setComment, data, users }) {
+export default function DetalleProducto({ selected, navigate, categoryName, active, addToCart }) {
   return (selected ? <>
         <button className="store-link" onClick={() => navigate('catalogo')}>← Volver al catálogo</button>
         <section className="store-detail"><ProductImage key={selected.imagen_url || 'none'} product={selected} /><div><span className="store-product-category">{categoryName(selected.categoria_id)} · {selected.codigo}</span><h1>{selected.nombre}</h1><p>{selected.descripcion || 'Sin descripción disponible.'}</p><strong className="store-price store-price-large">{money(selected.precio_venta)}</strong><p className="store-stock">{Number(selected.existencia) > 0 ? `${selected.existencia} ${selected.unidad_medida || 'unidad'} disponibles` : 'Agotado'}</p><button className="store-button" disabled={!active(selected) || Number(selected.existencia) <= 0} onClick={() => addToCart(selected)}>Agregar al carrito</button></div></section>

@@ -688,3 +688,5 @@ tbody tr:hover {
     width: calc(100% - 32px);
   }
 }
+
+.status--no-disponible { background: #fce8e8; color: #a32222; }

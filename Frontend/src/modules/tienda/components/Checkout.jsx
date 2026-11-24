@@ -1,8 +1,9 @@
 import React from 'react';
-import { money } from '../utils.js';
 
-export default function Checkout({ navigate, cart, submitOrder, delivery, setDelivery, address, setAddress, observations, setObservations, cartLines, subtotal }) {
-  return <><button className="store-link" onClick={() => navigate('carrito')}>← Volver al carrito</button><div className="store-page-heading"><span className="store-eyebrow">ÚLTIMO PASO</span><h1>Finalizar pedido</h1><p>Completá los datos de entrega y revisá tu pedido.</p></div>
-        {!cart.length ? <div className="store-empty">Tu carrito está vacío. <button className="store-link" onClick={() => navigate('catalogo')}>Ir al catálogo</button></div> : <form className="store-checkout-layout" onSubmit={submitOrder}><div className="store-checkout-fields"><section><h2>Entrega</h2><label className="store-radio"><input type="radio" name="delivery" value="RETIRO_TIENDA" checked={delivery === 'RETIRO_TIENDA'} onChange={event => setDelivery(event.target.value)} /> Retiro en tienda</label><label className="store-radio"><input type="radio" name="delivery" value="ENVIO_DOMICILIO" checked={delivery === 'ENVIO_DOMICILIO'} onChange={event => setDelivery(event.target.value)} /> Envío a domicilio</label>{delivery === 'ENVIO_DOMICILIO' && <label>Dirección de entrega<textarea value={address} onChange={event => setAddress(event.target.value)} maxLength={500} required placeholder="Provincia, cantón, distrito y dirección exacta" /></label>}<label>Observaciones (opcional)<textarea value={observations} onChange={event => setObservations(event.target.value)} placeholder="Indicaciones para tu pedido" /></label></section><section><h2>Pago</h2><div className="store-payment"><strong>PayPal</strong><span>Disponible para pedidos en línea</span></div><p className="store-muted">La conexión con PayPal está pendiente. Este formulario no cobra ni redirige a un pago real.</p></section></div><aside className="store-summary"><h2>Tu pedido</h2>{cartLines.map(line => <div key={line.productId}><span>{line.quantity} × {line.product?.nombre || 'Producto'}</span><strong>{money(Number(line.product?.precio_venta || 0) * line.quantity)}</strong></div>)}<div className="store-total"><span>Subtotal estimado</span><strong>{money(subtotal)}</strong></div><p>Impuestos y envío pendientes de confirmación. El pedido quedará pendiente de pago en la demostración.</p><button className="store-button" type="submit">Crear pedido de demostración</button></aside></form>}
-      </>;
+export default function Checkout({ navigate, cart }) {
+  return <>
+    <button className="store-link" onClick={() => navigate('carrito')}>← Volver al carrito</button>
+    <div className="store-page-heading"><h1>Finalizar pedido</h1></div>
+    <p className="store-empty">{cart.length ? 'El pago en línea aún no está disponible.' : 'Tu carrito está vacío.'}</p>
+  </>;
 }

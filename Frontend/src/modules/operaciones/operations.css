@@ -11,6 +11,11 @@
 .ops-secondary:hover { background: #f5f9fc; }
 .ops-link { border: 0; background: none; padding: 4px; color: #2e6fa6; font: inherit; font-size: 11px; font-weight: 700; }
 .ops-link:hover { color: #e87525; }
+.status.ops-status-inactive { background: #fce8e8; color: #a32222; }
+.ops-user-actions { white-space: nowrap; }
+.ops-user-actions button + button { margin-inline-start: 6px; }
+.ops-link-danger, .ops-link-danger:hover { color: #a32222; }
+.ops-link-danger:disabled { color: #687787; cursor: default; }
 .ops-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
 .ops-note { border: 1px solid #dbeaf7; border-radius: 9px; background: #f0f7fc; color: #456d8a; padding: 11px 14px; font-size: 12px; line-height: 1.5; margin: 0 0 18px; }
 .ops-error { border-radius: 8px; background: #fff1ee; padding: 10px 12px; color: #a63c30; font-size: 12px; }
