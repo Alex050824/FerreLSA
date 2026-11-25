@@ -113,7 +113,7 @@ export default function Store({ data, customer, token, verifyingSession, feedbac
       </>}
     </main>
     <footer className="store-footer">FerreLSA</footer>
-    <Chat chatOpen={chatOpen} onToggle={onChatToggle} />
+    <Chat key={customer?.id ?? 'invitado'} chatOpen={chatOpen} onToggle={onChatToggle} />
     {loginRequired && <LoginRequiredDialog onClose={() => setLoginRequired(false)} onLogin={onLogin} />}
   </div>;
 }

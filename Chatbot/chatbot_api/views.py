@@ -1,27 +1,34 @@
 import json
 import logging
 import re
-import unicodedata
 from time import perf_counter
+from urllib.parse import quote, unquote
 
+from django.conf import settings
 from django.db import DatabaseError, connection
 from django.http import JsonResponse
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_GET, require_POST
 
+from .conversacion import es_seguimiento, interpretar_social, normalizar, pedir_orientacion
 
 logger = logging.getLogger(__name__)
 LIMITE_LISTADO = 6
+_DURACION_CONTEXTO = 15 * 60
+_RUTA_CHAT = "/api/chatbot/"
 
 
-def obtener_productos():
+def obtener_productos(codigo=None):
     with connection.cursor() as cursor:
-        cursor.execute("""
+        consulta = """
             SELECT codigo, nombre, descripcion, precio_venta, existencia, unidad_medida
             FROM productos
             WHERE activo = 1
-            ORDER BY nombre, codigo
-        """)
+        """
+        if codigo is None:
+            cursor.execute(consulta + " ORDER BY nombre, codigo")
+        else:
+            cursor.execute(consulta + " AND codigo = %s", [codigo])
         return cursor.fetchall()
 
 
@@ -35,12 +42,6 @@ _VOCABULARIO_LISTADO = set("""
     ahora para por favor podria podrias producto productos que quiero quisiera saber
     se son stock su sus tenes tienen tienda todo todos tu un una ver venden venta y
 """.split())
-
-
-def _palabras(pregunta):
-    texto = unicodedata.normalize("NFKD", pregunta.casefold())
-    texto = "".join(c for c in texto if not unicodedata.combining(c))
-    return set(re.findall(r"\w+", texto))
 
 
 def _es_listado(palabras):
@@ -89,13 +90,45 @@ def _linea_producto(fila):
     return f"{nombre} — {importe} · {stock}."
 
 
+def _respuesta_breve(mensaje):
+    return {
+        "respuesta": mensaje,
+        "productos": [],
+        "tiempos_ms": {"catalogo": 0, "busqueda": 0, "generacion": 0, "total": 0},
+    }
+
+
 def consultar_catalogo(pregunta):
+    resultado, _ = _conversar(pregunta)
+    return resultado
+
+
+def _conversar(pregunta, anterior=None):
+    pregunta, mensaje, despedida = interpretar_social(pregunta)
+    if mensaje:
+        return _respuesta_breve(mensaje), None if despedida else anterior
+    texto = normalizar(pregunta)
+    orientacion = pedir_orientacion(texto)
+    if orientacion:
+        return _respuesta_breve(orientacion), None
+    palabras = set(texto.split())
+    seguimiento = es_seguimiento(texto)
+    if seguimiento and anterior is None and not _es_listado(palabras):
+        return _respuesta_breve("¿De cuál producto querés saber? Decime el nombre o el código."), None
+    resultado = _consultar_productos(pregunta, palabras, anterior if seguimiento else None)
+    fichas = resultado["productos"]
+    codigo = str(fichas[0]["codigo"]) if len(fichas) == 1 else None
+    return resultado, codigo
+
+
+def _consultar_productos(pregunta, palabras, codigo):
     inicio = perf_counter()
-    catalogo = obtener_productos()
+    catalogo = obtener_productos(codigo)
     leido = perf_counter()
-    palabras = _palabras(pregunta)
-    listado = _es_listado(palabras)
-    if listado:
+    listado = codigo is None and _es_listado(palabras)
+    if codigo is not None:
+        seleccion = [fila for fila in catalogo if str(fila[0]) == codigo]
+    elif listado:
         disponibles = [fila for fila in catalogo if fila[4] is not None and fila[4] > 0]
         seleccion = disponibles[:LIMITE_LISTADO]
     elif catalogo:
@@ -106,31 +139,150 @@ def consultar_catalogo(pregunta):
         seleccion = []
     buscado = perf_counter()
 
-    if seleccion:
-        from .modelo_qwen import generar_explicacion
 
-        consulta_comercial = bool(palabras & {
-            "cuesta", "cuestan", "precio", "precios", "vale", "valen", "stock",
-            "existencia", "existencias", "disponible", "disponibles", "quedan",
+    if seleccion:
+        pide_precio = bool(palabras & {
+            "cuesta", "cuestan", "precio", "precios", "vale", "valen"
         })
+
+        pide_cantidad = bool(palabras & {
+            "cuantas", "cuantos", "unidades", "cantidad",
+            "stock", "existencia", "existencias", "quedan"
+        })
+
+        pide_disponibilidad = bool(palabras & {
+            "tienen", "hay", "venden", "disponible",
+            "disponibles", "disponibilidad"
+        })
+
         pide_detalles = bool(palabras & {
-            "caracteristicas", "descripcion", "especificaciones", "sirve", "uso", "para",
+            "caracteristicas", "descripcion",
+            "especificaciones", "sirve", "uso"
         })
-        incluir_descripcion = not listado and (pide_detalles or not consulta_comercial)
-        explicacion = generar_explicacion(pregunta, seleccion[:3], incluir_descripcion=incluir_descripcion)
+
+        ficha_completa = bool(palabras & {
+            "ficha", "completa", "completo", "toda", "todo"
+        })
+
+        lineas = []
+
+        if listado:
+            lineas = [f"• {fila[1]}" for fila in seleccion]
+
+            if len(disponibles) > len(seleccion):
+                lineas.append(
+                    f"Te muestro {len(seleccion)} de "
+                    f"{len(disponibles)} productos disponibles."
+                )
+
+        else:
+            consulta_comercial = (
+                pide_precio or pide_cantidad or pide_disponibilidad
+            )
+
+            # Usar Qwen para explicaciones y recomendaciones.
+            if pide_detalles or ficha_completa or not consulta_comercial:
+                from .modelo_qwen import generar_explicacion
+
+                explicacion = generar_explicacion(
+                    pregunta,
+                    seleccion[:3],
+                    incluir_descripcion=True
+                )
+
+            # Usar Qwen para explicaciones y recomendaciones.
+            if pide_detalles or ficha_completa or not consulta_comercial:
+                from .modelo_qwen import generar_explicacion
+
+                explicacion = generar_explicacion(
+                    pregunta,
+                    seleccion[:3],
+                    incluir_descripcion=True
+                )
+
+                # Presentar de forma natural las explicaciones.
+                if len(seleccion) == 1:
+                    prefijo = (
+                        f"La ficha de {seleccion[0][1]} "
+                        "indica lo siguiente: «"
+                    )
+
+                    if explicacion.startswith(prefijo) and explicacion.endswith("»."):
+                        detalle = explicacion[len(prefijo):-2].strip().rstrip(".")
+
+                        if detalle:
+                            if palabras & {
+                                "caracteristicas", "descripcion",
+                                "especificaciones", "detalles"
+                            }:
+                                explicacion = f"{detalle}."
+                            else:
+                                explicacion = (
+                                    f"Para ese trabajo, te recomiendo "
+                                    f"este producto: {detalle}."
+                                )
+
+                lineas.append(explicacion)
+
+            for fila in seleccion:
+                nombre = fila[1]
+
+                if ficha_completa:
+                    lineas.append(_linea_producto(fila))
+                    continue
+
+                if not consulta_comercial:
+                    continue
+
+                # Reutilizar los formatos existentes de MySQL.
+                datos = _linea_producto(fila).partition(" — ")[2]
+                precio, _, existencia = datos.partition(" · ")
+                existencia = existencia.removesuffix(".")
+
+                if pide_precio and pide_cantidad:
+                    lineas.append(
+                        f"{nombre} cuesta {precio}. {existencia}."
+                    )
+
+                elif pide_precio:
+                    lineas.append(f"{nombre} cuesta {precio}.")
+
+                elif pide_cantidad:
+                    lineas.append(f"{nombre}: {existencia}.")
+
+                elif pide_disponibilidad:
+                    if fila[4] is None:
+                        lineas.append(
+                            f"No tengo la disponibilidad registrada de {nombre}."
+                        )
+                    elif fila[4] > 0:
+                        lineas.append(f"Sí, tenemos {nombre} disponible.")
+                    else:
+                        lineas.append(f"Por ahora {nombre} está agotado.")
+
+        respuesta = "\n".join(lineas)
+
+    elif codigo is not None:
+        respuesta = (
+            "Ya no encuentro ese producto en el catálogo activo. "
+            "¿Qué otro artículo querés consultar?"
+        )
+
+    elif listado:
+        respuesta = (
+            "En este momento no hay productos con existencias "
+            "disponibles en el catálogo."
+        )
+
+    else:
+        respuesta = (
+            "No encontré una coincidencia clara en el catálogo. "
+            "Puedo ayudarte con productos, precios y existencias. "
+            "¿Qué artículo buscás o para qué lo necesitás?"
+        )
+
     generado = perf_counter()
 
-    if seleccion:
-        lineas = [explicacion, *(_linea_producto(fila) for fila in seleccion)]
-        if listado and len(disponibles) > len(seleccion):
-            lineas.append(f"Te muestro {len(seleccion)} de {len(disponibles)} productos disponibles. "
-                          "Podés pedirme un artículo por nombre o por uso.")
-        respuesta = "\n".join(lineas)
-    elif listado:
-        respuesta = "En este momento no hay productos con existencias disponibles en el catálogo."
-    else:
-        respuesta = ("No encontré una coincidencia clara en el catálogo de FerreLSA. "
-                     "¿Me indicás el nombre del artículo o para qué lo necesitás?")
 
     fichas = [_ficha(fila) for fila in seleccion]
     return {
@@ -158,15 +310,30 @@ def preguntar_chatbot(request):
         return JsonResponse({"error": "Debe escribir una pregunta."}, status=400)
     if len(pregunta) > 300:
         return JsonResponse({"error": "La pregunta es demasiado larga."}, status=400)
+    cookie = "ferrelsa_chat"
+    if "conversacion" in datos:
+        conversacion = datos["conversacion"]
+        if not isinstance(conversacion, str) or not re.fullmatch(r"[0-9a-f]{32}", conversacion):
+            return JsonResponse({"error": "El identificador de conversación no es válido."}, status=400)
+        cookie += "_" + conversacion
+    valor = request.get_signed_cookie(cookie, default=None, max_age=_DURACION_CONTEXTO)
+    anterior = unquote(valor) if valor is not None else None
     try:
-        resultado = consultar_catalogo(pregunta.strip())
+        resultado, codigo = _conversar(pregunta.strip(), anterior)
     except DatabaseError:
         logger.exception("No se pudo consultar el catálogo del chatbot")
         return JsonResponse({"error": "No pude consultar el inventario en este momento."}, status=503)
     except (OSError, RuntimeError):
         logger.exception("Fallo de inferencia del chatbot")
         return JsonResponse({"error": "El asistente no está disponible en este momento."}, status=503)
-    return JsonResponse(resultado)
+    respuesta = JsonResponse(resultado)
+    if codigo is not None and codigo != anterior:
+        respuesta.set_signed_cookie(cookie, quote(codigo, safe=""), max_age=_DURACION_CONTEXTO,
+                                    path=_RUTA_CHAT, httponly=True, samesite="Lax",
+                                    secure=request.is_secure() or settings.SESSION_COOKIE_SECURE)
+    elif codigo is None and cookie in request.COOKIES:
+        respuesta.delete_cookie(cookie, path=_RUTA_CHAT, samesite="Lax")
+    return respuesta
 
 
 @require_GET

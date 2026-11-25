@@ -61,3 +61,31 @@ class BusquedaTest(TestCase):
             respuesta = buscador.buscar_productos("Necesito hacer un agujero en una tabla", productos=filas)
         self.assertEqual([fila[0] for fila, _ in respuesta], ["A"])
         candidatos.assert_called_once()
+
+    @patch("chatbot_api.modelo_qwen.usar_qwen")
+    @patch.object(buscador, "_logits_etiquetas")
+    def test_revisa_el_siguiente_si_el_primero_solo_acompana_la_tarea(self, logits, usar_qwen):
+        usar_qwen.return_value.__enter__.return_value = (None, None)
+        fichas = ("Base — Sujeta la pieza durante el pulido.", "Disco — Pule superficies.")
+        logits.side_effect = [
+            [[6, 0, 3], [0, 6, 3]],  # La base gana en ambos órdenes, el disco queda bajo X.
+            [[5, 1], [0, 4], [4, 1]],  # Base completa, función de la base, disco.
+        ]
+        resultado = buscador._evaluar_uso.__wrapped__("pulir una superficie", fichas)
+        self.assertEqual(resultado[0], 1)
+        self.assertEqual([len(c.args[2]) for c in logits.call_args_list], [2, 3])
+        self.assertEqual(tuple(logits.call_args.args[3]), ("Yes", "No"))
+
+    @patch("chatbot_api.modelo_qwen.usar_qwen")
+    @patch.object(buscador, "_logits_etiquetas")
+    def test_se_abstiene_si_ninguna_ficha_pasa_la_verificacion(self, logits, usar_qwen):
+        usar_qwen.return_value.__enter__.return_value = (None, None)
+        fichas = tuple(f"Referencia {i} — Mango de madera." for i in range(8))
+        logits.side_effect = [
+            [[5] * 8 + [0], [5] * 8 + [0]],
+            [[0, 4]] * 4,
+            [[0, 4]] * 4,
+        ]
+        self.assertIsNone(buscador._evaluar_uso.__wrapped__("pulir una superficie", fichas))
+        self.assertEqual([len(c.args[2]) for c in logits.call_args_list], [2, 4, 4])
+        usar_qwen.assert_called_once()
