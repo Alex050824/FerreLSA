@@ -29,7 +29,7 @@ function LoginRequiredDialog({ onClose, onLogin }) {
 }
 
 
-export default function Store({ data, customer, token, verifyingSession, feedback, cart, setCart, onLogin, onLogout, page, selectedId, onNavigate, chatOpen, onChatToggle, onBack }) {
+export default function Store({ data, customer, token, verifyingSession, feedback, cart, setCart, onLogin, onLogout, page, selectedId, onNavigate, chatOpen, onChatToggle, onBack, onPaid }) {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('');
   const [notice, setNotice] = useState('');
@@ -108,7 +108,17 @@ export default function Store({ data, customer, token, verifyingSession, feedbac
         {page === 'catalogo' && <Catalogo shown={shown} query={query} setQuery={setQuery} category={category} setCategory={setCategory} categories={categories} active={active} navigate={navigate} categoryName={categoryName} addToCart={addToCart} />}
         {page === 'detalle' && <DetalleProducto selected={selected} token={token} navigate={navigate} categoryName={categoryName} active={active} addToCart={addToCart} />}
         {page === 'carrito' && <Carrito cart={cart} cartLines={cartLines} navigate={navigate} setCart={setCart} updateQuantity={updateQuantity} subtotal={subtotal} />}
-        {page === 'checkout' && <Checkout navigate={navigate} cart={cart} />}
+        {page === 'checkout' && (
+ <Checkout
+    navigate={navigate}
+    cart={cart}
+    cartLines={cartLines}
+    token={token}
+    setCart={setCart}
+    subtotal={subtotal}
+    onPaid={onPaid}
+  />
+)}
         {page === 'historial' && <Historial customer={customer} customerSales={customerSales} products={products} navigate={navigate} onLogin={onLogin} />}
       </>}
     </main>

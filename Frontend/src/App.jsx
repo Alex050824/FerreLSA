@@ -170,7 +170,8 @@ export default function App() {
           goToStore(destination + (chatOpen ? '/chat' : ''));
         }}
         chatOpen={chatOpen} onChatToggle={() => goToStore(chatOpen ? storePath : (storePath || '/tienda') + '/chat')}
-        onBack={currentUser?.rol === 'ADMIN' ? () => navigate(adminReturn || '/admin') : undefined} />;
+        onBack={currentUser?.rol === 'ADMIN' ? () => navigate(adminReturn || '/admin') : undefined} 
+        onPaid={() => setRevision(valor => valor + 1)}/>;
     }
   }
   const adminPage = route === '/admin' ? 'inicio' : /^\/admin\/([^/]+)$/.exec(route)?.[1];

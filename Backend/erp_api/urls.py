@@ -1,8 +1,9 @@
 from django.urls import re_path
 
-from . import inventory, payments, purchases, sales, users
+from . import inventory, payments, purchases, sales, users, paypal_checkout
 from .db import query
 from .http import endpoint, response
+from . import cloudinary_upload
 
 
 @endpoint("GET")
@@ -39,6 +40,10 @@ urlpatterns = [
     re_path(r"^ventas/(?P<pk>[0-9]+)/?$", sales.sale_detail),
     re_path(r"^ventas/(?P<pk>[0-9]+)/comprobante/?$", sales.receipt),
     re_path(r"^ventas/(?P<pk>[0-9]+)/nota-credito/?$", sales.refund),
-    re_path(r"^integraciones/paypal/ventas/(?P<pk>[0-9]+)/confirmar/?$", payments.confirm),
-    re_path(r"^integraciones/paypal/ventas/(?P<pk>[0-9]+)/cancelar/?$", payments.cancel),
-]
+    re_path(r"^ventas/(?P<pk>[0-9]+)/paypal/crear/?$", paypal_checkout.crear_orden_venta,),
+    re_path(r"^ventas/(?P<pk>[0-9]+)/paypal/capturar/?$", paypal_checkout.capturar_pago_venta,),
+    re_path(r"^ventas/(?P<pk>[0-9]+)/paypal/cancelar/?$", paypal_checkout.cancelar_orden_venta,),
+    #re_path(r"^integraciones/paypal/ventas/(?P<pk>[0-9]+)/confirmar/?$", payments.confirm),
+    #re_path(r"^integraciones/paypal/ventas/(?P<pk>[0-9]+)/cancelar/?$", payments.cancel),
+    re_path(r"^admin/productos/imagen/?$", cloudinary_upload.subir_imagen,),
+]   
