@@ -20,7 +20,7 @@ async function renovarTokenCsrf() {
   return token;
 }
 
-function enviarPregunta(pregunta, token) {
+function enviarPregunta(pregunta, token, conversacion) {
   return fetch('/api/chatbot/preguntar/', {
     method: 'POST',
     credentials: 'same-origin',
@@ -28,12 +28,16 @@ function enviarPregunta(pregunta, token) {
       'Content-Type': 'application/json',
       'X-CSRFToken': token
     },
-    body: JSON.stringify({ pregunta })
+    body: JSON.stringify({ pregunta, conversacion })
   });
 }
 
 export default function Chat({ chatOpen, onToggle }) {
 
+  const [conversacion] = useState(() => {
+    const bytes = crypto.getRandomValues(new Uint8Array(16));
+    return Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('');
+  });
   const [chatText, setChatText] = useState('');
   const [chatMessages, setChatMessages] = useState([]);
   const [enviando, setEnviando] = useState(false);
@@ -57,9 +61,9 @@ export default function Chat({ chatOpen, onToggle }) {
 
     try {
       const token = leerTokenCsrf() || await renovarTokenCsrf();
-      let respuesta = await enviarPregunta(pregunta, token);
+      let respuesta = await enviarPregunta(pregunta, token, conversacion);
       if (respuesta.status === 403) {
-        respuesta = await enviarPregunta(pregunta, await renovarTokenCsrf());
+        respuesta = await enviarPregunta(pregunta, await renovarTokenCsrf(), conversacion);
       }
 
       const datos = await respuesta.json();
