@@ -1,0 +1,104 @@
+﻿SISTEMA DE COMENTARIOS Y ANÁLISIS DE SENTIMIENTO
+
+Esta aplicación simula una actividad de redes sociales: los participantes
+escriben opiniones sobre una marca, producto o servicio. RoBERTuito estima si
+cada opinión es positiva, negativa o neutral. Una alerta basada en sus
+puntuaciones señala casos que podrían necesitar revisión manual. Los resultados
+representan únicamente a quienes participaron, no a toda la opinión pública.
+La aplicación no recopila comentarios de redes sociales reales.
+
+REQUISITOS E INSTALACIÓN EN WINDOWS
+
+Se recomienda Python de 64 bits (por ejemplo, Python 3.12 o 3.14), acceso a internet
+para instalar las dependencias y descargar el modelo, y espacio libre suficiente:
+PyTorch y el modelo ocupan bastante espacio. Solo la computadora que ejecuta
+el sistema necesita Python; los demás participantes necesitan un navegador.
+
+Abre PowerShell en esta carpeta y ejecuta:
+
+   python -m venv .venv
+   .\.venv\Scripts\python.exe -m pip install -r requirements.txt
+   .\.venv\Scripts\python.exe sistema.py
+
+Si Windows no reconoce python, prueba py -3.12 en su lugar para crear el
+entorno, siempre que tengas instalada esa versión de Python. No es necesario
+activar el entorno virtual si usas los comandos anteriores con su ruta.
+
+La primera ejecución necesita internet para descargar desde Hugging Face el
+modelo y su tokenizador. La descarga
+y la carga inicial pueden tardar varios minutos. Los archivos se almacenan en
+la carpeta .modelos dentro del proyecto, salvo que se configure la variable de
+entorno HF_HOME para indicar otra ubicación. Una vez descargados se pueden
+reutilizar sin internet, siempre que sigan disponibles en esa caché. Si falla
+la descarga o la carga, revisa la conexión y el mensaje de la terminal.
+
+USO EN CLASE
+
+1. Conecta la computadora y los celulares a la misma red Wi-Fi.
+2. Ejecuta el sistema con el último comando anterior y deja abierta la terminal.
+3. Comparte con tus compañeros la dirección que aparece después de «Comparte
+   con la clase». Ellos pueden escribir comentarios, pero no ver resultados.
+4. Para ver los comentarios y el gráfico, abre el enlace privado del panel
+   que aparece en la terminal. En esta computadora puedes usar el enlace
+   privado de localhost; en el celular usa el enlace privado con la dirección
+   IP de la computadora y conecta ambos dispositivos a la misma red. No
+   necesitas escribir una clave. La parte privada del enlace se conserva al
+   reiniciar el programa, pero la dirección IP puede cambiar al cambiar de
+   red o de configuración. No compartas el enlace privado: cualquiera que lo
+   tenga podrá acceder. Actualiza la página para ver nuevos comentarios.
+5. Para cerrar el programa, presiona Ctrl+C en la terminal.
+
+Si no conecta, comprueba que todos usen la misma red. Algunas redes universitarias
+aíslan los dispositivos; un punto de acceso personal puede servir si no tiene
+ese aislamiento. Windows puede solicitar permiso para conexiones en redes
+privadas. Si la dirección mostrada no corresponde a la red Wi-Fi, consulta la
+IPv4 de la computadora con ipconfig y comparte http://DIRECCION_IPV4:8000.
+«localhost» siempre se refiere al dispositivo que abre el navegador: en el
+celular significa el propio celular, no la computadora que ejecuta el programa.
+
+MODELO, ALERTAS Y LÍMITES
+
+El único modelo utilizado para el análisis es RoBERTuito, ya entrenado para
+análisis de sentimiento en español:
+https://huggingface.co/pysentimiento/robertuito-sentiment-analysis
+El proyecto utiliza el modelo ya entrenado para predecir; no lo entrena con los
+comentarios recibidos.
+
+El modelo asigna cada comentario nuevo a una de tres categorías: Positivo,
+Negativo o Neutral. La aplicación muestra una alerta orientativa cuando las
+puntuaciones del modelo son poco claras. Esa alerta ayuda a decidir qué revisar,
+pero no cambia la categoría asignada ni constituye una categoría de sentimiento.
+Sus umbrales son orientativos y las puntuaciones no garantizan un acierto.
+
+Una alerta no demuestra que el comentario sea ambiguo o sarcástico y su ausencia
+no garantiza que la predicción sea correcta. El modelo puede equivocarse con el
+contexto, las expresiones locales, la ironía o las opiniones contradictorias.
+Se envía al modelo el texto original, incluidos los emojis; solo se analizan los
+primeros 128 tokens. Neutral no significa necesariamente que no haya una opinión
+y los resultados no representan a toda la población.
+
+PRIVACIDAD Y ARCHIVO DE DATOS
+
+El análisis se realiza en la computadora que ejecuta la aplicación. El modelo
+se descarga de Hugging Face al prepararlo por primera vez; los comentarios se
+procesan localmente y se guardan en comentarios.csv, junto a sistema.py.
+El panel de resultados se abre con el enlace privado mostrado en la terminal,
+sin contraseña. Cualquier persona con el enlace puede ver los resultados, así
+que guárdalo para ti y comparte con la clase solo el enlace del formulario.
+La parte privada del enlace se guarda en .clave_panel dentro de esta carpeta;
+no compartas ni distribuyas ese archivo. Si falta o se reemplaza, el enlace
+privado anterior dejará de funcionar.
+La conexión en la red local no usa HTTPS: los datos y el enlace no viajan
+cifrados. Usa una red confiable y pide que no incluyan datos personales. El
+archivo comentarios.csv también es legible para quien tenga acceso a esta
+computadora y a esa carpeta. No publiques el sistema en internet.
+
+Los datos persisten entre ejecuciones. Los comentarios de versiones anteriores,
+incluidos los identificados como salida directa de RoBERTuito en esas versiones,
+conservan su clasificación original y se muestran pendientes de análisis con la
+versión actual. No se vuelven a analizar automáticamente ni se incluyen en los
+resultados actuales hasta volver a analizarlos. Puedes usar «Analizar de nuevo»
+para actualizar su clasificación sin duplicarlos en el gráfico.
+Para iniciar una actividad con resultados nuevos,
+cierra el programa y cambia el nombre de comentarios.csv o elimínalo únicamente
+si ya no necesitas esos datos. Al recibir un comentario se creará uno nuevo.

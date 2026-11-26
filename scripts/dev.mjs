@@ -7,7 +7,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const windows = process.platform === 'win32';
 const python = join(root, 'Chatbot', '.venv', windows ? 'Scripts' : 'bin', windows ? 'python.exe' : 'python');
 const vite = join(root, 'Frontend', 'node_modules', 'vite', 'bin', 'vite.js');
-const sentimentsRoot = resolve(process.env.SENTIMIENTOS_DIR || join(root, '..', '..', 'sistema_sentimientos'));
+const sentimentsRoot = resolve(process.env.SENTIMIENTOS_DIR || join(root, 'sistema_sentimientos'));
 const sentimentsPython = join(sentimentsRoot, '.venv', windows ? 'Scripts' : 'bin', windows ? 'python.exe' : 'python');
 const sentimentsServer = join(sentimentsRoot, 'servicio_api.py');
 

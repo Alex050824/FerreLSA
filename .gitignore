@@ -9,3 +9,10 @@ dist/
 .env
 .env.*
 !.env.example
+
+sistema_sentimientos/.venv/
+sistema_sentimientos/.modelos/
+sistema_sentimientos/__pycache__/
+sistema_sentimientos/.clave_panel
+sistema_sentimientos/modelo_ferrelsa/
+sistema_sentimientos/modelo_ferrelsa_v1/

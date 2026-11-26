@@ -26,14 +26,14 @@ npm.cmd --prefix Frontend ci
 
 Para usar el chatbot también instalá las dependencias de `Chatbot/requirements.txt`.
 Para los comentarios, el proyecto `sistema_sentimientos` debe estar en
-`Desktop/sistema_sentimientos` (al mismo nivel que la carpeta `.Net`) y tener su
+`sistema_sentimientos` dentro de la raíz de FerreLSA y tener su
 entorno virtual con las dependencias de su `requirements.txt` instaladas. La primera
 vez, el modelo puede requerir conexión a Internet para descargar sus archivos.
 Para preparar ese entorno desde la raíz de FerreLSA:
 
 ```powershell
-py -m venv ..\..\sistema_sentimientos\.venv
-..\..\sistema_sentimientos\.venv\Scripts\python.exe -m pip install -r ..\..\sistema_sentimientos\requirements.txt
+py -m venv sistema_sentimientos\.venv
+sistema_sentimientos\.venv\Scripts\python.exe -m pip install -r sistema_sentimientos\requirements.txt
 ```
 
 Con MySQL iniciado, levantá los servicios desde la raíz con un solo comando:
