@@ -7,6 +7,9 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const windows = process.platform === 'win32';
 const python = join(root, 'Chatbot', '.venv', windows ? 'Scripts' : 'bin', windows ? 'python.exe' : 'python');
 const vite = join(root, 'Frontend', 'node_modules', 'vite', 'bin', 'vite.js');
+const sentimentsRoot = resolve(process.env.SENTIMIENTOS_DIR || join(root, '..', '..', 'sistema_sentimientos'));
+const sentimentsPython = join(sentimentsRoot, '.venv', windows ? 'Scripts' : 'bin', windows ? 'python.exe' : 'python');
+const sentimentsServer = join(sentimentsRoot, 'servicio_api.py');
 
 if (!existsSync(python)) {
   console.error('No se encontró el entorno virtual de Python en Chatbot/.venv.');
@@ -38,9 +41,9 @@ function stop(code) {
   process.exit(code);
 }
 
-function start(name, command, args, cwd) {
+function start(name, command, args, cwd, env = process.env) {
   console.log(`Iniciando ${name}...`);
-  const child = spawn(command, args, { cwd, stdio: 'inherit', detached: !windows, windowsHide: true });
+  const child = spawn(command, args, { cwd, env, stdio: 'inherit', detached: !windows, windowsHide: true });
   children.push(child);
   child.on('error', error => {
     console.error(`No se pudo iniciar ${name}: ${error.message}`);
@@ -57,3 +60,14 @@ process.on('SIGINT', () => stop(0));
 process.on('SIGTERM', () => stop(0));
 start('Django', python, ['-u', join(root, 'Chatbot', 'manage.py'), 'runserver'], root);
 start('Vite', process.execPath, [vite, '--host', '0.0.0.0'], join(root, 'Frontend'));
+if (process.env.SENTIMIENTOS_LOCAL === '0') {
+  console.log('Analizador local desactivado; se usará el servicio configurado en Django.');
+} else if (existsSync(sentimentsPython) && existsSync(sentimentsServer)) {
+  const sentimentsEnv = { ...process.env };
+  if (sentimentsEnv.SENTIMIENTOS_MODELO === 'original') delete sentimentsEnv.SENTIMIENTOS_MODELO;
+  else sentimentsEnv.SENTIMIENTOS_MODELO ||= join(sentimentsRoot, 'modelo_ferrelsa');
+  start('Analizador de sentimientos', sentimentsPython, ['-u', sentimentsServer], sentimentsRoot, sentimentsEnv);
+} else {
+  console.warn('No se encontró el servicio de sentimientos o su entorno virtual. Los comentarios no podrán publicarse hasta iniciarlo.');
+  console.warn(`Ruta esperada: ${sentimentsRoot}. Podés definir SENTIMIENTOS_DIR para indicar otra ubicación.`);
+}

@@ -1,6 +1,8 @@
 import React from 'react';
 import { money, customerName, formatQuantity } from '../utils.js';
 
+const formatStatus = value => { const text = String(value || '').replaceAll('_', ' ').toLocaleLowerCase('es-CR'); return text ? text[0].toLocaleUpperCase('es-CR') + text.slice(1) : ''; };
+
 export default function Historial({ customer, customerSales, products, navigate, onLogin }) {
   return <>
     <div className="store-page-heading">
@@ -15,7 +17,7 @@ export default function Historial({ customer, customerSales, products, navigate,
       {customerSales.map(sale => <article className="store-order" key={sale.id}>
         <div className="store-order-header">
           <div><strong>{sale.numero}</strong><small>{sale.fecha ? new Date(sale.fecha).toLocaleDateString('es-CR') : ''}</small></div>
-          <span className="store-order-status">{String(sale.estado || '').replaceAll('_', ' ')}</span>
+          <span className="store-order-status">{formatStatus(sale.estado)}</span>
           <strong>{money(sale.total)}</strong>
         </div>
         <div className="store-order-details">

@@ -10,8 +10,9 @@ _SOCIAL = re.compile(
     r"^[\s¿¡]*(?:"
     r"(?P<despedida>adi[oó]s|cha[ou]|hasta (?:luego|pronto|ma[ñn]ana)|nos vemos|"
     r"eso (?:es|ser[ií]a) todo|que (?:teng[aá]s?|pas[eé]s?) (?:un )?(?:buen d[ií]a|buena tarde|buena noche))|"
-    r"(?P<gracias>(?:(?:ok(?:ay)?|listo|perfecto)[,\s]+)?(?:much(?:as|[ií]simas) )?gracias"
-    r"(?: por (?:la |tu |su )?(?:ayuda|informaci[oó]n|atenci[oó]n))?)|"
+    r"(?P<gracias>(?:(?:ok(?:ay)?|listo|perfecto)[,\s]+)?(?:"
+    r"(?:much(?:as|[ií]simas) )?gracias(?: por (?:la |tu |su )?(?:ayuda|informaci[oó]n|atenci[oó]n))?"
+    r"|se agradece|muy amable))|"
     r"(?P<saludo>hola+|buen(?:os d[ií]as| d[ií]a)|buenas(?: (?:tardes|noches))?|"
     r"saludos|pura vida|qu[eé] tal|c[oó]mo (?:est[aá]s|vas))"
     r")\b(?:[ ,]+(?:FerreLSA|asistente|chatbot|bot|mae)\b)?", re.IGNORECASE,
@@ -38,28 +39,95 @@ def normalizar(pregunta):
     return " ".join(re.findall(r"\w+", texto))
 
 
+# La orientación general cubre trabajos y conceptos; los hechos de la tienda
+# (precios, existencias, envíos y condiciones) siguen su propia ruta.
+_AMBITO_FERRETERIA = re.compile(
+    r"\b(?:ferreter\w*|herramient\w*|constru\w*|repar\w*|bricolaje|"
+    r"pint\w*|brocha\w*|rodillo\w*|mader\w*|carpinter\w*|mueble\w*|"
+    r"cement\w*|concreto|mortero|pared\w*|muro\w*|ceramic\w*|baldosa\w*|"
+    r"piso\w*|azulejo\w*|adhesiv\w*|pegament\w*|silicon\w*|sellad\w*|"
+    r"taladr\w*|perfor\w*|broca\w*|clav\w*|martill\w*|tornill\w*|"
+    r"tuerca\w*|llave\w*|cort\w*|sierr\w*|lij\w*|candad\w*|cerradur\w*|"
+    r"tub\w*|pvc|plomer\w*|fontaner\w*|grifo\w*|fregader\w*|"
+    r"ducha\w*|caneri\w*|fuga\w*|grifer\w*|instalacion\w*|"
+    r"electric\w*|cable\w*|enchuf\w*|tomacorrient\w*|interruptor\w*|"
+    r"bombill\w*|iluminacion|lampara\w*|jardin\w*|pod\w*|manguera\w*|"
+    r"seguridad|proteccion|gafas|lentes|guantes|escalera\w*)\b"
+)
+_PREGUNTA_ORIENTACION = re.compile(
+    r"\b(?:como (?:se |puedo |puede |hago para |debo |deberia )?\w+|"
+    r"(?:que|cual) (?:es|son|significa|tipo|material|herramienta|producto)\b|"
+    r"(?:cual|que) (?:es la |son las )?diferencia\w*|diferencia\w* entre|"
+    r"(?:para que sirve|para que se usa|explicame|explica|"
+    r"como elegir|que debo (?:usar|hacer)|consejos? (?:para|sobre))|"
+    r"(?:necesito|quiero|quisiera|ocupo|debo|tengo que) "
+    r"(?:pintar|reparar|sellar|podar|limpiar|instalar|perforar|taladrar|"
+    r"pegar|unir|clavar|atornillar|cortar|lijar|construir|montar|arreglar|"
+    r"cambiar|colocar|fijar|impermeabilizar|destapar|regar|medir|sujetar|"
+    r"ajustar|proteger|ensamblar))\b"
+)
+_CONSULTA_COMERCIAL = re.compile(
+    r"\b(?:precios?|costos?|cuestan?|valen?|cotiz\w*|existencias?|stock|"
+    r"inventario|disponibles?|agotad\w*|tienen|tenes|venden|hay|"
+    r"comprar|compro|pedido\w*|envios?|entregas?|horarios?|ubicacion|"
+    r"direccion|telefono|pagar|pagos?|tarjetas?|efectivo|(?:formas?|metodos?) de pago)\b"
+)
+_PEDIDO_ARTICULO = re.compile(
+    r"\b(?:que|cual|cuales) (?:productos?|herramientas?|articulos?|materiales?)\b|"
+    r"\b(?:necesito|quiero|quisiera|busco|ocupo|recom\w*|suger\w*) "
+    r"(?:(?:un|una|algun|alguna|unos|unas|de|las?|los|me|nos) )*"
+    r"(?:productos?|herramientas?|articulos?|materiales?)\b"
+)
+
+
+def es_orientacion_general(texto):
+    """Detecta una pregunta explícita de orientación en el ámbito ferretero.
+
+    No decide qué artículos existen ni sus características particulares. El
+    llamador debe priorizar el contexto y las consultas comerciales de la tienda.
+    """
+    texto = normalizar(texto)
+    return bool(_PREGUNTA_ORIENTACION.search(texto) and _AMBITO_FERRETERIA.search(texto)
+                and not _CONSULTA_COMERCIAL.search(texto) and not _PEDIDO_ARTICULO.search(texto))
+
+
 _COMPLETA = (r"ficha (?:tecnica )?completa|(?:toda (?:la |su )?informacion|informacion completa)|"
              r"todos (?:los |sus )?(?:datos|detalles)|(?:datos|detalles) completos")
 _TECNICOS = r"caracteristicas?|descripciones|descripcion|especificaciones?|especificacion|atributos?|detalles?|ficha tecnica"
+_USO_Y_DESCRIPCION = r"para que (?:sirve|se usa)|como (?:es|funciona|se usa)|que (?:es|hace)|de que se trata|(?:cual es )?(?:su |el )?uso"
 _PETICION = (r"(?:(?:por favor |me )?(?:mostrame|muestrame|muestra|dame|deme|decime|dime|indica(?:me)?|"
              r"quiero (?:ver|saber)|quisiera (?:ver|saber)) )?")
 
 # Solo una pregunta sin nombre ni atributos nuevos puede heredar el producto anterior.
 _SEGUIMIENTO = re.compile(
     _PETICION + r"(?:"
-    rf"(?:la |su )?(?:{_COMPLETA})|cuanto (?:cuestan?|valen?|salen?)|"
+    rf"(?:la |su )?(?:{_COMPLETA})|(?:a )?cuanto (?:me )?(?:cuestan?|valen?|salen?|es)|"
+    r"(?:en cuanto (?:sale|esta)|que vale)|"
     r"(?:cual es |que )?(?:el |su )?(?:precio|costo)(?: tiene)?|"
     r"(?:cuant[oa]s?(?: unidades| stock| existencias?)?|(?:que |la )?cantidad)"
     r"(?: (?:hay|quedan?|tienen|les quedan))?(?: disponibles)?|"
-    r"(?:lo |la )?tienen(?: disponible| en (?:existencia|stock))?|(?:hay|tienen) (?:existencias?|stock)|"
-    r"(?:esta|sigue) (?:disponible|en stock)|(?:su )?disponibilidad|para que sirve|"
+    r"(?:lo |la )?(?:tienen|tiene|hay)(?: disponible| en (?:existencia|stock))?|(?:hay|tienen|tiene) (?:existencias?|stock)|"
+    rf"(?:esta|sigue) (?:disponible|en stock)|(?:su )?disponibilidad|{_USO_Y_DESCRIPCION}|"
     rf"(?:(?:cuales son|cual es|que) )?(?:(?:sus|su|la|las|los) )?(?:{_TECNICOS})(?: tiene)?"
-    r")(?: (?:ese|esa|este|esta)(?: (?:producto|articulo|herramienta))?)?(?: por favor)?"
+    r")(?: (?:ese|esa|este|esta)(?: (?:producto|articulo|herramienta))?| (?:de |sobre )?(?:eso|ello))?(?: por favor)?"
 )
 _INCOMPLETA = re.compile(
     r"(?:(?:necesito|busco|quiero|quisiera|ocupo|ando buscando|estoy buscando)"
     r"(?: (?:algo|un|una|un producto|una herramienta|un articulo|informacion))?(?: (?:para|sobre))?|"
     r"(?:cuanto|cuantos|y|para|me interesa|me podes ayudar con|tengo una (?:pregunta|consulta)))?"
+)
+_DEVOLUCIONES = re.compile(
+    r"(?:(?:quiero|quisiera|puedo|necesito|como puedo|como hago para) )?"
+    r"(?:devolver|cambiar) (?:un|el|mi|este|ese) (?:producto|articulo|pedido|compra)\b|"
+    r"(?:cual es |que |como es )?(?:la |su )?politica de (?:cambios?|devoluciones?)\b|"
+    r"(?:hacen|aceptan|permiten) (?:cambios?|devoluciones?)\b"
+)
+_PAGOS = re.compile(
+    r"(?:(?:como|donde|con que) (?:puedo |se puede )?pagar|"
+    r"(?:puedo|podria|se puede|pueden) pagar|"
+    r"(?:aceptan|reciben|permiten) (?:pagos?|tarjetas?|efectivo|sinpe|transferencias?|visa|mastercard)|"
+    r"(?:cual(?:es)? (?:es|son) |que |como es )?(?:la |los |las |sus? )?"
+    r"(?:formas?|metodos?|medios?) de pago)\b"
 )
 _FUERA_DE_ALCANCE = re.compile(
     r"(?:y )?(?:(?:(?:cual es |cuales son |que )?(?:el |los |su |sus )?"
@@ -77,6 +145,10 @@ _FUERA_DE_ALCANCE = re.compile(
 
 def es_seguimiento(texto):
     texto = texto.removeprefix("y ").removeprefix("entonces ")
+    # Aquí el sujeto implícito es la ficha previa; se conserva el destino de
+    # uso para que la vista lo contraste con la descripción actual.
+    if re.fullmatch(r"(?:(?:me|nos) )?(?:sirve|funciona) para [a-z0-9 ]{1,120}", texto):
+        return True
     return all(_SEGUIMIENTO.fullmatch(parte) for parte in texto.split(" y "))
 
 
@@ -86,9 +158,9 @@ def campos_solicitados(texto):
     for parte in texto.split(" y "):
         if re.search(rf"\b(?:{_COMPLETA})\b", parte):
             campos.add("completa")
-        elif re.search(rf"\b(?:{_TECNICOS}|para que sirve)\b", parte):
+        elif re.search(rf"\b(?:{_TECNICOS}|{_USO_Y_DESCRIPCION})\b", parte):
             campos.add("descripcion")
-        if re.search(r"\b(?:precios?|costos?|cuestan?|valen?|cuanto salen?)\b", parte):
+        if re.search(r"\b(?:precios?|costos?|cuestan?|valen?|(?:a )?cuanto (?:me )?(?:cuestan?|valen?|salen?|es)|en cuanto (?:sale|esta)|que vale)\b", parte):
             campos.add("precio")
         if re.search(r"\b(?:cantidades|cantidad|cuant[oa]s|cuant[oa] (?:stock|existencia|hay|queda))\b", parte):
             campos.add("cantidad")
@@ -96,7 +168,7 @@ def campos_solicitados(texto):
             campos.add("disponibilidad")
     if not campos and _es_tarea(texto):
         campos.add("recomendacion")
-    if not campos and re.search(r"\b(?:tienen|hay|venden|quedan|cuentan con)\b", texto):
+    if not campos and re.search(r"\b(?:tienen|tiene|hay|venden|quedan|cuentan con)\b", texto):
         if not re.search(r"\b(?:productos|articulos|catalogo|inventario|mercaderia)\b", texto):
             campos.add("disponibilidad")
     return campos
@@ -116,6 +188,10 @@ def consulta_de_busqueda(pregunta):
 def pedir_orientacion(texto):
     if _INCOMPLETA.fullmatch(texto) or texto.endswith((" para", " sobre")):
         return "¿Qué producto buscás o qué trabajo querés hacer?"
+    if _DEVOLUCIONES.match(texto):
+        return "No tengo información confirmada sobre cambios o devoluciones. Consultá directamente con la tienda."
+    if _PAGOS.match(texto):
+        return "No tengo información confirmada sobre los medios de pago. Consultá directamente con la tienda."
     if _FUERA_DE_ALCANCE.match(texto):
         return "Desde este chat puedo ayudarte con productos, precios, existencias y características. ¿Qué necesitás?"
     return None

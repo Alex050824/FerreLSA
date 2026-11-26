@@ -1,6 +1,6 @@
 from django.urls import re_path
 
-from . import inventory, payments, purchases, sales, users, paypal_checkout, reports
+from . import dashboard, inventory, payments, purchases, sales, users, paypal_checkout, reports
 from .db import query
 from .http import endpoint, response
 from . import cloudinary_upload
@@ -20,6 +20,7 @@ urlpatterns = [
     re_path(r"^salud/?$", health),
     re_path(r"^admin/comentarios/?$", comments),
     re_path(r"^admin/reportes/power-bi/?$", reports.power_bi_report),
+    re_path(r"^admin/dashboard/?$", dashboard.summary),
     re_path(r"^auth/registro/?$", users.register),
     re_path(r"^auth/login/?$", users.login),
     re_path(r"^auth/logout/?$", users.logout),

@@ -15,7 +15,7 @@ _turno_e5 = Lock()
 _OMITIR = frozenset("""
     a al algo algun alguna algunos algunas articulo articulos comprar compra con
     conoce conoces contar cuanto cuanta cuantas cuantos cuesta cuestan cual cuales
-    busco buscaba buscando caracteristica caracteristicas codigo como
+    busco buscaba buscando cantidad cantidades caracteristica caracteristicas codigo como
     consulta costo costos quisiera
     de del disponible disponibles disponibilidad donde el ella en es esa ese esta
     estan este esto existencia existencias favor ficha fichas hay hola informacion la
@@ -143,6 +143,19 @@ def _coincidencias_directas(consulta, productos):
     return sorted(seleccion.items(), key=lambda par: -par[1])
 
 
+def coincidencias_nombre(consulta, productos):
+    """Identifica nombres explícitos, sin confundir «para» del nombre con una tarea."""
+    # Una acción después de «para» sigue siendo una pregunta de uso y debe
+    # contrastarse con la ficha, incluso si aparece también en el nombre.
+    if re.search(r"\bpara\s+(?:(?:poder|mejor)\s+)?[a-z]+(?:ar|er|ir)\b", _normalizar(consulta)):
+        return []
+    pedidos = _terminos(consulta)
+    return [(indice, valor) for indice, valor in _coincidencias_directas(consulta, productos)
+            if valor >= 2 and pedidos and (
+                pedidos <= _terminos(productos[indice][1]) or pedidos == _terminos(productos[indice][0])
+            )]
+
+
 def _es_tarea(consulta):
     return bool(re.search(
         r"(?:\bpara\b|^(?!comprar\b|encontrar\b|conseguir\b)\w{2,}(?:ar|er|ir)\b|"
@@ -164,6 +177,9 @@ def buscar_productos(pregunta, limite=3, *, productos=None):
     if not productos:
         return []
     consulta = _normalizar(pregunta).strip("¿?¡!. ")
+    nombres = coincidencias_nombre(consulta, productos)
+    if nombres:
+        return [(productos[i], valor) for i, valor in nombres[:limite]]
     if not _es_tarea(consulta):
         directas = _coincidencias_directas(consulta, productos)
         return [(productos[i], valor) for i, valor in directas[:limite]]

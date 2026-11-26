@@ -122,7 +122,7 @@ export default function Chat({ chatOpen, onToggle }) {
 
             <p className="store-chat-reply">
               ¡Hola! Soy el asistente virtual de FerreLSA.
-              Preguntame sobre nuestros productos, precios y disponibilidad.
+              Preguntame por productos, precios y disponibilidad, o contame qué trabajo de ferretería necesitás hacer.
             </p>
 
             {chatMessages.map(message => (
@@ -140,7 +140,7 @@ export default function Chat({ chatOpen, onToggle }) {
 
             {enviando && (
               <p className="store-chat-reply" role="status">
-                Consultando inventario...
+                Preparando respuesta...
               </p>
             )}
 

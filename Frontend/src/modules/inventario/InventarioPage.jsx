@@ -1,6 +1,8 @@
 
 import React, { useRef, useState } from 'react';
 import { readSession } from '../../api.js';
+import CategoryFilter from './CategoryFilter.jsx';
+import DropdownSelect from '../../components/DropdownSelect.jsx';
 import {
   money,
   find,
@@ -8,7 +10,6 @@ import {
   PageHeading,
   Modal,
   Input,
-  Search,
   Table,
 } from '../../components/AdminCatalogShared.jsx';
 
@@ -34,22 +35,27 @@ export default function InventarioPage({ data, mutate }) {
   const moves = data.movimientos || [];
 
   const [query, setQuery] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('');
+  const [showLowStockOnly, setShowLowStockOnly] = useState(false);
   const [form, setForm] = useState(null);
   const [movement, setMovement] = useState(null);
   const [error, setError] = useState('');
+  const [removalError, setRemovalError] = useState('');
+  const [removingProduct, setRemovingProduct] = useState(null);
   const [showMoves, setShowMoves] = useState(false);
+  const lowStockCount = products.filter(p => Number(p.existencia) <= Number(p.stock_minimo)).length;
 
   // Cloudinary
   const archivoImagenRef = useRef(null);
   const [subiendoImagen, setSubiendoImagen] = useState(false);
 
-  const filtered = products.filter(p =>
-    `${p.codigo} ${p.nombre} ${
-      find(categories, p.categoria_id)?.nombre || ''
-    }`
-      .toLowerCase()
-      .includes(query.toLowerCase())
-  );
+  const filtered = products.filter(p => {
+    const categoryName = find(categories, p.categoria_id)?.nombre || '';
+    const matchesText = `${p.codigo} ${p.nombre} ${categoryName}`.toLowerCase().includes(query.trim().toLowerCase());
+    const matchesCategory = !categoryFilter || String(p.categoria_id) === String(categoryFilter);
+    const matchesStock = !showLowStockOnly || Number(p.existencia) <= Number(p.stock_minimo);
+    return matchesText && matchesCategory && matchesStock;
+  });
 
   // Subir imagen a Cloudinary
   async function subirImagen(event) {
@@ -142,24 +148,13 @@ export default function InventarioPage({ data, mutate }) {
     }
 
     if (
-      !form.codigo.trim() ||
       !form.nombre.trim() ||
-      !form.unidad_medida.trim()
+      !form.unidad_medida.trim() ||
+      !form.categoria_id
     ) {
       return setError(
-        'Completá el código, nombre y unidad de medida.'
+        'Seleccioná una categoría y completá el nombre y la unidad de medida.'
       );
-    }
-
-    if (
-      products.some(
-        p =>
-          String(p.id) !== String(form.id) &&
-          p.codigo.toLowerCase() ===
-            form.codigo.trim().toLowerCase()
-      )
-    ) {
-      return setError('Ya existe un producto con ese código.');
     }
 
     if (
@@ -189,7 +184,8 @@ export default function InventarioPage({ data, mutate }) {
         '/admin/productos' + (id ? '/' + id : ''),
         {
           ...product,
-          categoria_id: product.categoria_id || null,
+          codigo: id ? product.codigo : undefined,
+          categoria_id: product.categoria_id,
           proveedor_id: product.proveedor_id || null,
           imagen_url: product.imagen_url || null,
           activo: Boolean(product.activo),
@@ -200,6 +196,20 @@ export default function InventarioPage({ data, mutate }) {
       setForm(null);
     } catch (err) {
       setError(err.message);
+    }
+  }
+
+  async function removeProduct(product) {
+    if (!window.confirm(`¿Eliminar ${product.nombre} del catálogo? El producto se desactivará y conservará su historial.`)) return;
+    setRemovingProduct(product.id);
+    setRemovalError('');
+    try {
+      await mutate(`/admin/productos/${product.id}`, undefined, 'DELETE');
+      if (String(form?.id) === String(product.id)) setForm(null);
+    } catch (err) {
+      setRemovalError(err.message || 'No se pudo eliminar el producto.');
+    } finally {
+      setRemovingProduct(null);
     }
   }
 
@@ -280,7 +290,7 @@ export default function InventarioPage({ data, mutate }) {
             });
           }}
         >
-          Registrar movimiento
+          Ajustar existencias
         </button>
 
         <button
@@ -291,23 +301,24 @@ export default function InventarioPage({ data, mutate }) {
           {showMoves ? 'Ver productos' : 'Ver movimientos'}
         </button>
 
-        <span>
-          {products.filter(
-            p =>
-              Number(p.existencia) <=
-              Number(p.stock_minimo)
-          ).length}{' '}
-          productos con existencias bajas
-        </span>
+        <span>{lowStockCount} productos con existencias bajas</span>
       </div>
 
       {!showMoves ? (
         <>
-          <Search
-            value={query}
-            onChange={setQuery}
-            label="Buscar producto o código"
-          />
+          {removalError && <p className="ac-error" role="alert">{removalError}</p>}
+          <div className="module-summary inventory-filter-bar">
+            <div className="search-box">
+              <input type="search" aria-label="Buscar producto por nombre o código" placeholder="Buscar por nombre o código"
+                value={query} onChange={event => setQuery(event.target.value)} />
+            </div>
+            <CategoryFilter categories={categories} value={categoryFilter} onChange={setCategoryFilter} />
+            <button type="button" className={`inventory-low-stock-filter${showLowStockOnly ? ' is-active' : ''}`} aria-pressed={showLowStockOnly} onClick={() => setShowLowStockOnly(current => !current)}>
+              <span className="inventory-low-stock-dot" aria-hidden="true" />
+              <span>Stock bajo</span>
+              <span className="inventory-low-stock-count">{lowStockCount}</span>
+            </button>
+          </div>
 
           <Table
             headers={[
@@ -360,7 +371,7 @@ export default function InventarioPage({ data, mutate }) {
                 <td>
                   <button
                     type="button"
-                    className="ac-link"
+                    className="table-action"
                     onClick={() => {
                       setError('');
                       setForm({
@@ -370,6 +381,14 @@ export default function InventarioPage({ data, mutate }) {
                     }}
                   >
                     Editar
+                  </button>
+                  <button
+                    type="button"
+                    className="table-action table-action--danger"
+                    disabled={removingProduct !== null}
+                    onClick={() => removeProduct(p)}
+                  >
+                    Eliminar
                   </button>
                 </td>
               </tr>
@@ -416,6 +435,7 @@ export default function InventarioPage({ data, mutate }) {
       {form && (
         <Modal
           title={form.id ? 'Editar producto' : 'Agregar producto'}
+          className="ac-modal--product"
           onClose={() => {
             if (!subiendoImagen) setForm(null);
           }}
@@ -423,28 +443,9 @@ export default function InventarioPage({ data, mutate }) {
           <form onSubmit={saveProduct} className="ac-form">
             <div className="ac-grid">
 
-              <Field label="Código *">
-                <Input
-                  form={form}
-                  setForm={setForm}
-                  name="codigo"
-                  maxLength="60"
+              <Field label="Categoría *">
+                <DropdownSelect
                   required
-                />
-              </Field>
-
-              <Field label="Nombre *">
-                <Input
-                  form={form}
-                  setForm={setForm}
-                  name="nombre"
-                  maxLength="180"
-                  required
-                />
-              </Field>
-
-              <Field label="Categoría">
-                <select
                   value={form.categoria_id || ''}
                   onChange={e =>
                     setForm({
@@ -460,11 +461,21 @@ export default function InventarioPage({ data, mutate }) {
                       {c.nombre}
                     </option>
                   ))}
-                </select>
+                </DropdownSelect>
+              </Field>
+
+              <Field label="Nombre *">
+                <Input
+                  form={form}
+                  setForm={setForm}
+                  name="nombre"
+                  maxLength="180"
+                  required
+                />
               </Field>
 
               <Field label="Proveedor">
-                <select
+                <DropdownSelect
                   value={form.proveedor_id || ''}
                   onChange={e =>
                     setForm({
@@ -480,7 +491,7 @@ export default function InventarioPage({ data, mutate }) {
                       {s.nombre}
                     </option>
                   ))}
-                </select>
+                </DropdownSelect>
               </Field>
 
               <Field label="Unidad de medida *">
@@ -541,18 +552,17 @@ export default function InventarioPage({ data, mutate }) {
                   style={{ display: 'none' }}
                 />
 
-                <button
-                  type="button"
-                  className="ac-secondary"
-                  onClick={() =>
-                    archivoImagenRef.current?.click()
-                  }
-                  disabled={subiendoImagen}
-                >
-                  {subiendoImagen
-                    ? 'Subiendo imagen...'
-                    : 'Subir imagen'}
-                </button>
+                <div className="ac-product-image-control">
+                  {form.imagen_url && <img className="ac-preview" src={form.imagen_url} alt="Vista previa del producto" />}
+                  <button
+                    type="button"
+                    className="ac-secondary"
+                    onClick={() => archivoImagenRef.current?.click()}
+                    disabled={subiendoImagen}
+                  >
+                    {subiendoImagen ? 'Subiendo imagen...' : form.imagen_url ? 'Cambiar imagen' : 'Subir imagen'}
+                  </button>
+                </div>
               </div>
 
               <label className="ac-checkbox">
@@ -579,20 +589,11 @@ export default function InventarioPage({ data, mutate }) {
                         descripcion: e.target.value,
                       })
                     }
-                    rows="3"
+                    rows="2"
                   />
                 </Field>
               </div>
             </div>
-
-            {/* Vista previa de Cloudinary */}
-            {form.imagen_url && (
-              <img
-                className="ac-preview"
-                src={form.imagen_url}
-                alt="Vista previa del producto"
-              />
-            )}
 
             {error && (
               <p className="ac-error" role="alert">
@@ -627,14 +628,15 @@ export default function InventarioPage({ data, mutate }) {
       {/* Formulario para movimientos de inventario */}
       {movement && (
         <Modal
-          title="Registrar movimiento"
+          title="Ajuste manual de inventario"
           onClose={() => setMovement(null)}
         >
+          <p className="inventory-movement-note">Usá este formulario para mermas, daños, correcciones o ingresos manuales. Las ventas descuentan existencias automáticamente y las compras las aumentan al marcarlas como recibidas.</p>
           <form className="ac-form" onSubmit={saveMovement}>
             <div className="ac-grid">
 
               <Field label="Producto *">
-                <select
+                <DropdownSelect
                   required
                   value={movement.producto_id}
                   onChange={e =>
@@ -654,11 +656,11 @@ export default function InventarioPage({ data, mutate }) {
                       {p.unidad_medida})
                     </option>
                   ))}
-                </select>
+                </DropdownSelect>
               </Field>
 
               <Field label="Tipo">
-                <select
+                <DropdownSelect
                   value={movement.tipo}
                   onChange={e =>
                     setMovement({
@@ -668,15 +670,15 @@ export default function InventarioPage({ data, mutate }) {
                   }
                 >
                   <option value="ENTRADA">
-                    Entrada
+                    Entrada manual
                   </option>
                   <option value="SALIDA">
-                    Salida
+                    Salida manual
                   </option>
                   <option value="AJUSTE">
-                    Ajuste de existencia
+                    Fijar existencia
                   </option>
-                </select>
+                </DropdownSelect>
               </Field>
 
               <Field
@@ -701,7 +703,7 @@ export default function InventarioPage({ data, mutate }) {
                 />
               </Field>
 
-              <Field label="Motivo">
+              <Field label="Motivo del ajuste *">
                 <Input
                   form={movement}
                   setForm={setMovement}

@@ -25,12 +25,35 @@ npm.cmd --prefix Frontend ci
 ```
 
 Para usar el chatbot también instalá las dependencias de `Chatbot/requirements.txt`.
-Con MySQL iniciado, levantá ambos servidores desde la raíz con un solo comando:
+Para los comentarios, el proyecto `sistema_sentimientos` debe estar en
+`Desktop/sistema_sentimientos` (al mismo nivel que la carpeta `.Net`) y tener su
+entorno virtual con las dependencias de su `requirements.txt` instaladas. La primera
+vez, el modelo puede requerir conexión a Internet para descargar sus archivos.
+Para preparar ese entorno desde la raíz de FerreLSA:
+
+```powershell
+py -m venv ..\..\sistema_sentimientos\.venv
+..\..\sistema_sentimientos\.venv\Scripts\python.exe -m pip install -r ..\..\sistema_sentimientos\requirements.txt
+```
+
+Con MySQL iniciado, levantá los servicios desde la raíz con un solo comando:
 
 ```powershell
 npm.cmd run dev
 ```
 
+El comando inicia Django, Vite y el analizador de sentimientos en `127.0.0.1:8001`.
+FerreLSA usa por defecto el modelo ajustado guardado en
+`sistema_sentimientos/modelo_ferrelsa`. Si esa carpeta no está disponible,
+el analizador informa el error; consultá `sistema_sentimientos/AJUSTE_FERRELSA.md`
+para reproducir el ajuste. Para volver al modelo original, definí
+`$env:SENTIMIENTOS_MODELO = 'original'` antes de iniciar `npm run dev`.
+Si el analizador está en otra carpeta, definí `SENTIMIENTOS_DIR` en el entorno
+antes de ejecutar el comando. Si el servicio se ejecuta en otra dirección,
+configurá `SENTIMIENTOS_URL` en el `.env` de FerreLSA con la dirección base
+del servicio, sin `/analizar`. Para usar un servicio iniciado por separado,
+definí también `$env:SENTIMIENTOS_LOCAL = '0'` en PowerShell antes de ejecutar
+`npm run dev`.
 Presioná Ctrl+C para detenerlos. Abrí la dirección que indique Vite. En desarrollo, Vite envía las solicitudes
 de `/api` a Django en `127.0.0.1:8000`.
 
@@ -42,8 +65,11 @@ redirigir las solicitudes `/api` al mismo backend de Django, incluido el chatbot
 La página principal muestra el catálogo público con productos y categorías activos de MySQL. Iniciá
 sesión con una cuenta ADMIN para administrar inventario, proveedores,
 compras, ventas y usuarios, y consultar comentarios. Las cuentas CLIENTE
-pueden consultar su historial de pedidos. El carrito se mantiene en memoria.
-El pago en línea y la publicación de comentarios siguen pendientes.
+pueden consultar su historial de pedidos y publicar comentarios en los productos.
+Cada comentario se clasifica y se guarda junto con su sentimiento en MySQL; si
+el analizador no está disponible, se informa el error y no se publica. La
+clasificación es una estimación automática y el modelo considera hasta 128 tokens.
+El carrito se mantiene en memoria.
 
 ## Organización del código
 

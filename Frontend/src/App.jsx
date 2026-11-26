@@ -5,9 +5,9 @@ import Store from './modules/tienda/Store.jsx';
 import { api, readSession } from './api.js';
 
 const storePages = new Map([
-  ['catalogo', 'catalogo'], ['carrito', 'carrito'], ['checkout', 'checkout'], ['pedidos', 'historial'],
+  ['catalogo', 'catalogo'], ['carrito', 'carrito'], ['checkout', 'checkout'], ['pedidos', 'historial'], ['perfil', 'perfil'],
 ]);
-const emptyData = { productos: [], categorias: [], proveedores: [], movimientos: [], compras: [], ventas: [], usuarios: [], comentarios: [] };
+const emptyData = { productos: [], categorias: [], proveedores: [], movimientos: [], compras: [], ventas: [], usuarios: [], comentarios: [], dashboard: null };
 
 export default function App() {
   const [path, setPath] = useState(() => window.location.pathname);
@@ -20,6 +20,7 @@ export default function App() {
   const [revision, setRevision] = useState(0);
   const route = path.replace(/\/$/, '');
   const adminRoute = route === '/admin' || route.startsWith('/admin/');
+  const dashboardRoute = adminRoute && route === '/admin';
   const storeRoute = route === '' || route === '/tienda' || route.startsWith('/tienda/');
   const accessArea = adminRoute ? 'admin' : storeRoute ? 'store' : null;
   const token = session?.token;
@@ -80,6 +81,14 @@ export default function App() {
     const read = path => api(path, options);
     setLoad({ pending: true, error: '' });
     async function loadData() {
+      if (admin && dashboardRoute) {
+        const dashboard = await read('/admin/dashboard');
+        if (!controller.signal.aborted) {
+          setSnapshot({ admin, session: activeSession, data: { ...emptyData, dashboard } });
+          setLoad({ pending: false, error: '' });
+        }
+        return;
+      }
       const paths = admin
         ? { productos: '/admin/productos', categorias: '/admin/categorias', proveedores: '/admin/proveedores',
             movimientos: '/inventario/movimientos', compras: '/compras', ventas: '/ventas', usuarios: '/usuarios',
@@ -115,7 +124,7 @@ export default function App() {
       }
     });
     return () => controller.abort();
-  }, [admin, store, session, currentUser, revision]);
+  }, [admin, store, session, currentUser, revision, dashboardRoute]);
 
   useEffect(() => {
     const syncPath = () => setPath(window.location.pathname);
@@ -134,6 +143,12 @@ export default function App() {
     const result = await api(path, { method, body, token: session.token });
     setRevision(value => value + 1);
     return result;
+  }
+
+  async function saveProfile(profile) {
+    const updated = await mutate('/usuarios/me', profile, 'PATCH');
+    setVerified(previous => previous?.token === token ? { ...previous, user: updated } : previous);
+    return updated;
   }
 
   function logout() {
@@ -163,6 +178,7 @@ export default function App() {
       return <Store data={data} cart={cart} setCart={setCart} customer={currentUser} token={currentUser ? token : undefined}
         verifyingSession={Boolean(token && !currentUser && !validationError)} feedback={feedback} page={page}
         selectedId={productId} onLogout={logout} onLogin={() => navigate('/login', { state: { returnTo: route || '/' } })}
+        onSaveProfile={saveProfile}
         onNavigate={(next, id) => {
           const destination = next === 'detalle' ? '/tienda/productos/' + encodeURIComponent(id)
             : next === 'historial' ? '/tienda/pedidos'

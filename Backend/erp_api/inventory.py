@@ -1,4 +1,6 @@
 from decimal import Decimal
+import re
+import unicodedata
 
 from django import forms
 from django.db import transaction
@@ -19,7 +21,7 @@ SUPPLIER = {
     "direccion": text(500, required=False), "contacto": text(120, required=False), **ACTIVE,
 }
 PRODUCT = {
-    "nombre": text(180), "codigo": text(60), "categoria_id": RecordId(required=False),
+    "nombre": text(180), "codigo": text(60), "categoria_id": RecordId(),
     "proveedor_id": RecordId(required=False), "descripcion": text(10000, required=False),
     "unidad_medida": text(30), "precio_compra": decimal_field(2), "precio_venta": decimal_field(2),
     "stock_minimo": decimal_field(3), "imagen_url": ImageURL(max_length=500, required=False, empty_value=None),
@@ -30,31 +32,82 @@ PUBLIC_PRODUCT = "id, categoria_id, codigo, nombre, descripcion, unidad_medida, 
 CATALOGS = {"categorias": CATEGORY, "proveedores": SUPPLIER, "productos": PRODUCT}
 
 
+def category_prefix(name):
+    normalized = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode().lower()
+    normalized = re.sub(r"[^a-z0-9 ]", " ", normalized)
+    words = [word for word in normalized.split() if word not in {"y", "de", "del", "la", "el", "los", "las"}]
+    label = " ".join(words)
+    known = {
+        "construccion": "CTN", "adhesivos selladores": "ADS", "ferreteria general": "FEG",
+        "muebles organizacion": "MYO", "herramientas": "HER", "pinturas": "PIN",
+        "plomeria": "PLO", "electricidad": "ELE", "jardineria": "JAR", "seguridad": "SEG",
+        "limpieza": "LIM", "automotriz": "AUT", "banos": "BAN", "cocinas": "COC",
+        "pisos": "PIS", "lamparas": "LAM", "exteriores": "EXT",
+    }
+    if label in known:
+        return known[label]
+    if not words:
+        return "GEN"
+    if len(words) == 1:
+        return words[0][:3].upper()
+    return (words[0][:2] + words[-1][0]).upper()
+
+
+def generate_product_code(category_id):
+    category = one("SELECT id, nombre FROM categorias WHERE id = %s FOR UPDATE", (category_id,))
+    prefix = category_prefix(category["nombre"])
+    codes = query("SELECT codigo FROM productos WHERE codigo LIKE %s", (f"{prefix}-%",))
+    sequences = []
+    for row in codes:
+        match = re.fullmatch(rf"{re.escape(prefix)}-(\d+)", str(row["codigo"]))
+        if match:
+            sequences.append(int(match.group(1)))
+    next_sequence = max(sequences, default=0) + 1
+    candidate = f"{prefix}-{next_sequence:03d}"
+    while query("SELECT id FROM productos WHERE codigo = %s LIMIT 1", (candidate,)):
+        next_sequence += 1
+        candidate = f"{prefix}-{next_sequence:03d}"
+    return candidate
+
+
 @endpoint("GET", "POST", access="ADMIN")
+@transaction.atomic
 def catalog(request, resource):
     if resource not in CATALOGS:
         raise ApiError(404, "Catálogo desconocido.")
     if request.method == "GET":
         return response(query(f"SELECT * FROM {resource} ORDER BY id"))
+    submitted = body(request)
     defaults = PRODUCT_DEFAULTS if resource == "productos" else {}
-    data = clean({**defaults, **body(request)}, CATALOGS[resource])
+    if resource == "productos":
+        category_id = record_id(submitted.get("categoria_id"))
+        submitted["codigo"] = generate_product_code(category_id)
+    data = clean({**defaults, **submitted}, CATALOGS[resource])
     pk = insert(resource, data)
     return response(one(f"SELECT * FROM {resource} WHERE id = %s", (pk,)), 201)
 
 
 @endpoint("GET", "PATCH", "DELETE", access="ADMIN")
+@transaction.atomic
 def catalog_detail(request, resource, pk):
     if resource not in CATALOGS:
         raise ApiError(404, "Catálogo desconocido.")
     pk = record_id(pk)
     sql = f"SELECT * FROM {resource} WHERE id = %s"
-    row = one(sql, (pk,))
+    row = one(sql + (" FOR UPDATE" if request.method != "GET" else ""), (pk,))
     if request.method == "GET":
         return response(row)
     if request.method == "DELETE":
         update(resource, pk, {"activo": False})
         return no_content()
-    update(resource, pk, clean(body(request), CATALOGS[resource], partial=True))
+    submitted = body(request)
+    if resource == "productos":
+        if submitted.get("codigo") and submitted["codigo"] != row["codigo"]:
+            raise ApiError(422, "El cÃ³digo de producto no se puede editar manualmente.")
+        submitted.pop("codigo", None)
+        if "categoria_id" in submitted and str(submitted["categoria_id"]) != str(row["categoria_id"]):
+            submitted["codigo"] = generate_product_code(record_id(submitted["categoria_id"]))
+    update(resource, pk, clean(submitted, CATALOGS[resource], partial=True))
     return response(one(sql, (pk,)))
 
 
@@ -77,9 +130,28 @@ def product_detail(request, pk):
     return response(one(f"SELECT {PUBLIC_PRODUCT} FROM productos WHERE id = %s AND activo = 1", (record_id(pk),)))
 
 
-@endpoint("GET")
+@endpoint("GET", "POST")
 def product_comments(request, pk):
     product_id = record_id(pk)
+    if request.method == "POST":
+        from .sentiments import analyze_comment
+        from .users import authenticate
+
+        user = authenticate(request)
+        if user["rol"] != "CLIENTE":
+            raise ApiError(403, "Solo los clientes pueden publicar comentarios.")
+        data = clean(body(request), {"comentario": text(1000)})
+        one("SELECT id FROM productos WHERE id = %s AND activo = 1", (product_id,))
+        sentiment = analyze_comment(data["comentario"])
+        comment_id = insert("comentarios_productos", {
+            "producto_id": product_id, "usuario_id": user["id"],
+            "comentario": data["comentario"], "sentimiento": sentiment,
+        })
+        return response(one(
+            "SELECT c.id, c.producto_id, c.comentario, c.fecha, u.nombre, u.apellido "
+            "FROM comentarios_productos c JOIN usuarios u ON u.id = c.usuario_id WHERE c.id = %s",
+            (comment_id,),
+        ), 201)
     one("SELECT id FROM productos WHERE id = %s AND activo = 1", (product_id,))
     sql = (
         "SELECT c.id, c.producto_id, c.comentario, c.fecha, u.nombre, u.apellido "

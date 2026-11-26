@@ -690,3 +690,77 @@ tbody tr:hover {
 }
 
 .status--no-disponible { background: #fce8e8; color: #a32222; }
+
+/* Sistema visual FerreLSA: espacio administrativo */
+.workspace { background: var(--fl-canvas); color: var(--fl-ink); }
+.sidebar { background: var(--fl-surface); border-right-color: var(--fl-border); }
+.sidebar .brand { border-bottom-color: var(--fl-border); }
+.brand__symbol { border-color: transparent; border-radius: 8px; box-shadow: none; }
+.brand__identity strong, .page-heading h1 { color: var(--fl-navy); }
+.brand__identity strong span, .orange-dot { color: var(--fl-orange); }
+.brand__identity small { color: var(--fl-graphite); }
+.nav-caption { color: #7c8793; }
+.nav-item { border-radius: 6px; color: var(--fl-muted); }
+.nav-item:hover { background: var(--fl-surface-soft); color: var(--fl-navy); }
+.nav-item.active { background: var(--fl-navy-soft); color: var(--fl-navy); box-shadow: inset 3px 0 var(--fl-orange); }
+.nav-badge { border-radius: 4px; background: var(--fl-orange-soft); color: #9c4d0a; }
+.work-topbar { border-bottom-color: var(--fl-border); }
+.breadcrumbs { color: var(--fl-muted); }
+.work-content { padding-top: 30px; }
+.page-heading h1 { font-size: 27px; letter-spacing: -.55px; }
+.page-heading p, .stat-label, .surface-heading p { color: var(--fl-muted); }
+.eyebrow { color: var(--fl-orange-deep); }
+.stat-card, .surface, .module-summary, .power-bi-frame-wrap, .power-bi-message {
+  border-color: var(--fl-border); border-radius: 8px; box-shadow: 0 1px 2px #15283d0a;
+}
+.stat-card { min-height: 98px; padding: 15px 16px; }
+.stat-icon { border-radius: 7px; }
+.stat-icon.orange { background: var(--fl-orange-soft); color: var(--fl-orange-deep); }
+.stat-icon.blue { background: var(--fl-navy-soft); color: var(--fl-navy); }
+.stat-icon.violet { background: #f0eff6; color: #625889; }
+.stat-icon.green { background: #eaf4ee; color: var(--fl-success); }
+.stat-card strong, .surface-heading h2, .ops-panel h2, .ops-panel h3 { color: var(--fl-ink); }
+.inventory-alert { border-bottom-color: var(--fl-border); }
+.inventory-alert__details strong { color: var(--fl-ink); }
+.text-button, .workspace-link { color: var(--fl-navy); }
+.text-button:hover, .workspace-link:hover { color: var(--fl-orange-deep); }
+.table-scroll { overflow-x: auto; }
+.table-scroll > table { min-width: 620px; }
+th { background: #f3f5f7; color: #536170; letter-spacing: .025em; }
+td { color: #354454; border-bottom-color: #e9edf0; }
+tbody tr:hover { background: #f8fafb; }
+.status { border-radius: 4px; background: #e8f3ec; color: var(--fl-success); }
+.status--stock-bajo { background: #fff2df; color: var(--fl-warning); }
+.status--no-disponible, .ops-status-inactive { background: #fbeceb; color: var(--fl-error); }
+.primary-action { border-radius: 6px; background: var(--fl-orange); box-shadow: none; }
+.primary-action:hover { background: var(--fl-orange-deep); }
+.module-summary, .ops-toolbar { border-color: var(--fl-border); border-radius: 7px; }
+.search-box { border-color: var(--fl-border); border-radius: 6px; }
+.search-box:focus-within { border-color: var(--fl-orange); box-shadow: 0 0 0 3px #f5822018; }
+.empty-state { color: var(--fl-muted); }
+.avatar { border-radius: 6px; background: var(--fl-navy-soft); color: var(--fl-navy); }
+.user-card { border-top-color: var(--fl-border); }
+.ops-panel { padding: 20px; }
+.ops-field, .ac-field { color: #354454; }
+.ops-field input, .ops-field select, .ops-field textarea, .ops-toolbar input, .ops-filter select,
+.ac-field input, .ac-field select, .ac-field textarea, .search-box {
+  border-color: #cfd7df; border-radius: 6px; color: var(--fl-ink);
+}
+.ops-field input:focus, .ops-field select:focus, .ops-field textarea:focus,
+.ac-field input:focus, .ac-field select:focus, .ac-field textarea:focus,
+.ops-toolbar input:focus, .ops-filter select:focus { outline: 2px solid #f5822055; border-color: var(--fl-orange); }
+.ops-secondary, .ac-secondary { border-color: #cfd7df; border-radius: 6px; color: var(--fl-navy); }
+.ops-link, .ac-link { color: var(--fl-navy); }
+.ops-link:hover, .ac-link:hover { color: var(--fl-orange-deep); }
+.ac-modal { border-radius: 9px; }
+.ac-modal > header { border-bottom-color: var(--fl-border); }
+.ac-modal h2 { color: var(--fl-navy); }
+.ac-overlay { background: #081a32a8; }
+.ops-note { border-radius: 6px; }
+.ops-error, .ac-error { color: var(--fl-error); }
+@media (max-width: 680px) {
+  .table-scroll > table { min-width: 580px; }
+  .work-content { padding-top: 22px; }
+  .page-heading { flex-wrap: wrap; }
+  .nav-item.active { box-shadow: inset 0 3px var(--fl-orange); }
+}

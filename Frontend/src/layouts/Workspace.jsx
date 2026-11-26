@@ -39,24 +39,25 @@ export default function Workspace({ data, mutate, page, user, token, feedback, o
     </main>;
   }
   const CurrentPage = pageComponents[page];
-  const lowStock = data.productos.filter(p => p.activo && Number(p.existencia) <= Number(p.stock_minimo)).length;
-  return <div className="workspace">
-    <aside className="sidebar">
-      <Brand onClick={() => onNavigate('inicio')} />
+  return <div className="workspace workspace--erp">
+    <aside className="sidebar sidebar--erp">
+      <div className="sidebar-brand"><Brand onClick={() => onNavigate('inicio')} /></div>
       <div className="nav-caption">ESPACIO DE TRABAJO</div>
       <nav aria-label="Administración">
         {sections.map(section => <button key={section.id} title={section.label} aria-label={section.label} aria-current={page === section.id ? 'page' : undefined} className={`nav-item ${page === section.id ? 'active' : ''}`} onClick={() => onNavigate(section.id)}>
           <Icon name={section.icon} size={19} /><span>{section.label}</span>
-          {section.id === 'inventario' && lowStock > 0 && <i className="nav-badge">{lowStock}</i>}
         </button>)}
       </nav>
       <div className="sidebar-bottom">
-        <button className="nav-item" onClick={onStore}><Icon name="cart" size={19} /><span>Ir a la tienda</span></button>
-        <div className="user-card"><span className="avatar">{user.nombre?.[0]}</span><span><strong>{user.nombre}</strong><small>{user.rol}</small></span><button aria-label="Volver al inicio" title="Volver al inicio" onClick={onLogout}><Icon name="logout" size={17} /></button></div>
+        <div className="user-card" aria-label={`Sesión iniciada por ${[user.nombre, user.apellido].filter(Boolean).join(' ') || user.correo || 'usuario'}`}>
+          <span className="avatar">{[user.nombre, user.apellido].filter(Boolean).map(part => part[0]).join('').slice(0, 2).toUpperCase() || 'U'}</span>
+          <span className="user-card__identity"><strong>{[user.nombre, user.apellido].filter(Boolean).join(' ') || user.correo || 'Usuario'}</strong><small>Sesión activa</small></span>
+          <i className="user-card__status" aria-hidden="true" />
+        </div>
       </div>
     </aside>
     <main className="work-main">
-      <header className="work-topbar"><div className="breadcrumbs">FerreLSA <span>/</span> {active.label}</div><div className="topbar-right"><button className="workspace-link" onClick={onStore}>Ver tienda</button><button className="workspace-link" onClick={onLogout}>Salir</button></div></header>
+      <header className="work-topbar"><div className="breadcrumbs"><span>FerreLSA</span><span className="breadcrumb-divider">/</span><strong>{active.label}</strong></div><div className="topbar-right"><button type="button" className="workspace-link workspace-link--store" onClick={onStore}><Icon name="cart" size={17} /><span>Ver tienda</span></button><button type="button" className="workspace-link workspace-link--logout" onClick={onLogout}><Icon name="logout" size={17} /><span>Salir</span></button></div></header>
       <div className="work-content">
         {feedback && <p role="status">{feedback}</p>}
         {!feedback && (page === 'inicio' ? <Dashboard data={data} navigate={onNavigate} /> : page === 'reportes'

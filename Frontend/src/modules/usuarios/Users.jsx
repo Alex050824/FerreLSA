@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
+import DropdownSelect from '../../components/DropdownSelect.jsx';
 import { Field, Header, nameOf } from '../operaciones/OperationsShared.jsx';
+import CostaRicaLocation from '../tienda/CostaRicaLocation.jsx';
 
 const blankUser = () => ({ nombre: '', apellido: '', identificacion: '', correo: '', telefono: '', rol: 'CLIENTE', provincia: '', canton: '', distrito: '', direccion_exacta: '', activo: true, password: '' });
 
@@ -49,11 +51,9 @@ export default function Users({ data, mutate, currentUser }) {
         <Field label="Correo *"><input type="email" required maxLength={255} value={form.correo} onChange={e => update('correo', e.target.value)} /></Field>
         <Field label="Identificación"><input maxLength={30} value={form.identificacion || ''} onChange={e => update('identificacion', e.target.value)} /></Field>
         <Field label="Teléfono"><input type="tel" maxLength={30} value={form.telefono || ''} onChange={e => update('telefono', e.target.value)} /></Field>
-        <Field label="Rol"><select value={form.rol} onChange={e => update('rol', e.target.value)}><option value="CLIENTE">Cliente</option><option value="ADMIN">Administrador</option></select></Field>
-        <Field label="Provincia"><input maxLength={80} value={form.provincia || ''} onChange={e => update('provincia', e.target.value)} /></Field>
-        <Field label="Cantón"><input maxLength={80} value={form.canton || ''} onChange={e => update('canton', e.target.value)} /></Field>
-        <Field label="Distrito"><input maxLength={80} value={form.distrito || ''} onChange={e => update('distrito', e.target.value)} /></Field>
-        <Field label="Estado"><select value={form.activo ? '1' : '0'} onChange={e => update('activo', e.target.value === '1')}><option value="1">Activo</option><option value="0">Inactivo</option></select></Field>
+        <Field label="Rol"><DropdownSelect value={form.rol} onChange={e => update('rol', e.target.value)}><option value="CLIENTE">Cliente</option><option value="ADMIN">Administrador</option></DropdownSelect></Field>
+        <CostaRicaLocation form={form} setForm={setForm} fieldClass="ops-field" />
+        <Field label="Estado"><DropdownSelect value={form.activo ? '1' : '0'} onChange={e => update('activo', e.target.value === '1')}><option value="1">Activo</option><option value="0">Inactivo</option></DropdownSelect></Field>
         <Field label="Dirección exacta" wide><textarea maxLength={500} value={form.direccion_exacta || ''} onChange={e => update('direccion_exacta', e.target.value)} /></Field>
       </div>{error && <p className="ops-error" role="alert">{error}</p>}<div className="ops-actions"><button className="primary-action" type="submit">Guardar usuario</button><button type="button" className="ops-secondary" onClick={() => setForm(null)}>Cancelar</button></div></form>
     </section>}
@@ -66,9 +66,9 @@ export default function Users({ data, mutate, currentUser }) {
           <td>{nameOf(user)}</td><td>{user.correo}</td><td>{user.telefono || '—'}</td>
           <td>{user.rol === 'ADMIN' ? 'Administrador' : 'Cliente'}</td>
           <td><span className={user.activo ? 'status' : 'status ops-status-inactive'}>{user.activo ? 'Activo' : 'Inactivo'}</span></td>
-          <td className="ops-user-actions">
-            <button type="button" className="ops-link" onClick={() => edit(user)}>Editar</button>
-            <button type="button" className="ops-link ops-link-danger"
+          <td className="table-actions">
+            <button type="button" className="table-action" onClick={() => edit(user)}>Editar</button>
+            <button type="button" className="table-action table-action--danger"
               disabled={removing !== null || user.id === currentUser.id}
               onClick={() => remove(user)}>Eliminar</button>
           </td>

@@ -10,7 +10,7 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_GET, require_POST
 
-from .conversacion import es_seguimiento, interpretar_social, normalizar, pedir_orientacion
+from .conversacion import campos_solicitados, es_orientacion_general, es_seguimiento, interpretar_social, normalizar, pedir_orientacion
 
 logger = logging.getLogger(__name__)
 LIMITE_LISTADO = 6
@@ -115,6 +115,26 @@ def _conversar(pregunta, anterior=None):
     seguimiento = es_seguimiento(texto)
     if seguimiento and anterior is None and not _es_listado(palabras):
         return _respuesta_breve("¿De cuál producto querés saber? Decime el nombre o el código."), None
+    if seguimiento and anterior and re.fullmatch(r"(?:(?:me|nos) )?(?:sirve|funciona) para [a-z0-9 ]{1,120}", texto.removeprefix("y ").removeprefix("entonces ")):
+        filas = obtener_productos(anterior)
+        if not filas:
+            return _respuesta_breve("Ya no encuentro ese producto en el catálogo activo. ¿Qué otro artículo querés consultar?"), None
+        fila = filas[0]
+        descripcion = (fila[2] or "").strip()
+        respuesta = f"No puedo confirmar esa compatibilidad de {fila[1]} con la información disponible."
+        if descripcion:
+            respuesta += f" La ficha indica: {descripcion}"
+        respuesta += " Consultá la ficha técnica o las indicaciones del fabricante antes de usarlo."
+        resultado = _respuesta_breve(respuesta)
+        resultado["productos"] = [_ficha(fila)]
+        return resultado, anterior
+    if not seguimiento and es_orientacion_general(pregunta):
+        from .orientacion import orientar
+
+        respuesta = orientar(pregunta)
+        if not respuesta:
+            respuesta = "Para orientarte mejor, contame qué trabajo querés hacer y en qué superficie o material vas a trabajar."
+        return _respuesta_breve(respuesta), anterior
     resultado = _consultar_productos(pregunta, palabras, anterior if seguimiento else None)
     fichas = resultado["productos"]
     codigo = str(fichas[0]["codigo"]) if len(fichas) == 1 else None
@@ -141,28 +161,19 @@ def _consultar_productos(pregunta, palabras, codigo):
 
 
     if seleccion:
-        pide_precio = bool(palabras & {
-            "cuesta", "cuestan", "precio", "precios", "vale", "valen"
-        })
+        from .busqueda_semantica import coincidencias_nombre
 
-        pide_cantidad = bool(palabras & {
-            "cuantas", "cuantos", "unidades", "cantidad",
-            "stock", "existencia", "existencias", "quedan"
-        })
-
-        pide_disponibilidad = bool(palabras & {
-            "tienen", "hay", "venden", "disponible",
-            "disponibles", "disponibilidad"
-        })
-
-        pide_detalles = bool(palabras & {
-            "caracteristicas", "descripcion",
-            "especificaciones", "sirve", "uso"
-        })
-
-        ficha_completa = bool(palabras & {
-            "ficha", "completa", "completo", "toda", "todo"
-        })
+        campos = campos_solicitados(normalizar(pregunta))
+        pide_precio = "precio" in campos
+        pide_cantidad = "cantidad" in campos
+        pide_disponibilidad = "disponibilidad" in campos
+        pide_detalles = "descripcion" in campos
+        ficha_completa = "completa" in campos
+        # «Duchas» o «¿y duchas?» consulta otro artículo, no una tarea.
+        # En nombres como «llave para fregadero», «para» forma parte del nombre.
+        es_uso = "recomendacion" in campos and not coincidencias_nombre(pregunta, seleccion)
+        if not (pide_precio or pide_cantidad or pide_disponibilidad or pide_detalles or ficha_completa or es_uso):
+            pide_disponibilidad = True
 
         lineas = []
 
@@ -180,8 +191,7 @@ def _consultar_productos(pregunta, palabras, codigo):
                 pide_precio or pide_cantidad or pide_disponibilidad
             )
 
-            # Usar Qwen para explicaciones y recomendaciones.
-            if pide_detalles or ficha_completa or not consulta_comercial:
+            if pide_detalles or ficha_completa or es_uso:
                 from .modelo_qwen import generar_explicacion
 
                 explicacion = generar_explicacion(
@@ -189,38 +199,6 @@ def _consultar_productos(pregunta, palabras, codigo):
                     seleccion[:3],
                     incluir_descripcion=True
                 )
-
-            # Usar Qwen para explicaciones y recomendaciones.
-            if pide_detalles or ficha_completa or not consulta_comercial:
-                from .modelo_qwen import generar_explicacion
-
-                explicacion = generar_explicacion(
-                    pregunta,
-                    seleccion[:3],
-                    incluir_descripcion=True
-                )
-
-                # Presentar de forma natural las explicaciones.
-                if len(seleccion) == 1:
-                    prefijo = (
-                        f"La ficha de {seleccion[0][1]} "
-                        "indica lo siguiente: «"
-                    )
-
-                    if explicacion.startswith(prefijo) and explicacion.endswith("»."):
-                        detalle = explicacion[len(prefijo):-2].strip().rstrip(".")
-
-                        if detalle:
-                            if palabras & {
-                                "caracteristicas", "descripcion",
-                                "especificaciones", "detalles"
-                            }:
-                                explicacion = f"{detalle}."
-                            else:
-                                explicacion = (
-                                    f"Para ese trabajo, te recomiendo "
-                                    f"este producto: {detalle}."
-                                )
 
                 lineas.append(explicacion)
 
@@ -246,6 +224,13 @@ def _consultar_productos(pregunta, palabras, codigo):
 
                 elif pide_precio:
                     lineas.append(f"{nombre} cuesta {precio}.")
+                    if pide_disponibilidad:
+                        if fila[4] is None:
+                            lineas.append(f"No tengo la disponibilidad registrada de {nombre}.")
+                        elif fila[4] > 0:
+                            lineas.append(f"Sí, tenemos {nombre} disponible.")
+                        else:
+                            lineas.append(f"Por ahora {nombre} está agotado.")
 
                 elif pide_cantidad:
                     lineas.append(f"{nombre}: {existencia}.")
