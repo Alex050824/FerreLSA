@@ -8,6 +8,7 @@ import ComprasPage from '../modules/compras/ComprasPage.jsx';
 import Sales from '../modules/ventas/Sales.jsx';
 import Users from '../modules/usuarios/Users.jsx';
 import Sentiments from '../modules/sentimientos/Sentiments.jsx';
+import PowerBIReport from '../modules/reportes/PowerBIReport.jsx';
 
 const sections = [
   { id: 'inicio', label: 'Panel principal', icon: 'chart' },
@@ -17,6 +18,7 @@ const sections = [
   { id: 'ventas', label: 'Ventas locales', icon: 'cart' },
   { id: 'usuarios', label: 'Usuarios', icon: 'user' },
   { id: 'sentimientos', label: 'Comentarios', icon: 'info' },
+  { id: 'reportes', label: 'Estadísticas y reportes', icon: 'chart' },
 ];
 
 const pageComponents = {
@@ -28,7 +30,7 @@ const pageComponents = {
   sentimientos: Sentiments,
 };
 
-export default function Workspace({ data, mutate, page, user, feedback, onNavigate, onLogout, onStore }) {
+export default function Workspace({ data, mutate, page, user, token, feedback, onNavigate, onLogout, onStore }) {
   const active = sections.find(section => section.id === page);
   if (!active) {
     return <main className="container">
@@ -57,7 +59,9 @@ export default function Workspace({ data, mutate, page, user, feedback, onNaviga
       <header className="work-topbar"><div className="breadcrumbs">FerreLSA <span>/</span> {active.label}</div><div className="topbar-right"><button className="workspace-link" onClick={onStore}>Ver tienda</button><button className="workspace-link" onClick={onLogout}>Salir</button></div></header>
       <div className="work-content">
         {feedback && <p role="status">{feedback}</p>}
-        {!feedback && (page === 'inicio' ? <Dashboard data={data} navigate={onNavigate} /> : <CurrentPage key={page} data={data} mutate={mutate} currentUser={user} />)}
+        {!feedback && (page === 'inicio' ? <Dashboard data={data} navigate={onNavigate} /> : page === 'reportes'
+          ? <PowerBIReport token={token} />
+          : <CurrentPage key={page} data={data} mutate={mutate} currentUser={user} />)}
       </div>
     </main>
   </div>;

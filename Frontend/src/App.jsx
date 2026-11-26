@@ -176,7 +176,7 @@ export default function App() {
   }
   const adminPage = route === '/admin' ? 'inicio' : /^\/admin\/([^/]+)$/.exec(route)?.[1];
   if (adminPage && admin) {
-    return <Workspace data={data} mutate={mutate} page={adminPage} user={verified.user} feedback={feedback}
+    return <Workspace data={data} mutate={mutate} page={adminPage} user={verified.user} token={token} feedback={feedback}
       onNavigate={page => navigate(page === 'inicio' ? '/admin' : '/admin/' + page)}
       onLogout={logout}
       onStore={() => navigate('/tienda', { state: { adminReturn: route } })} />;

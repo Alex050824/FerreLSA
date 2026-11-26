@@ -68,3 +68,19 @@ src/
 ```
 
 Las vistas administrativas reciben datos de la API a través de `App.jsx` y `Workspace.jsx`.
+
+## Estadísticas y reportes de Power BI
+
+El panel administrativo incluye la sección **Estadísticas y reportes**. Para mostrar un informe:
+
+1. En Power BI Desktop, conectá el informe a la base MySQL de FerreLSA y publicá el informe en Power BI.
+2. En Power BI Service, usá **Archivo > Insertar informe > Publicar en la web (público)** y copiá la URL que comienza con https://app.powerbi.com/view?r=.
+3. En el archivo .env de la raíz del proyecto, configurá:
+
+   POWER_BI_REPORT_URL=https://app.powerbi.com/view?r=TU_CODIGO_DE_INSERCION
+
+4. Reiniciá npm run dev, iniciá sesión con una cuenta ADMIN y abrí **Estadísticas y reportes**.
+
+La aplicación entrega la URL mediante una API que requiere una sesión ADMIN y solo acepta enlaces HTTPS de inserción de app.powerbi.com. Si la variable está vacía o el enlace no es válido, la sección muestra una indicación. Los filtros, tablas y gráficos se pueden usar dentro del informe embebido.
+
+**Publicar en la web hace público el informe y sus datos para cualquier persona con el enlace, incluso fuera de FerreLSA. Usalo exclusivamente con datos ficticios de prueba.** La restricción ADMIN de FerreLSA protege el acceso a la sección de la aplicación, pero no vuelve privado el enlace público de Power BI. La conexión a MySQL se configura en Power BI; FerreLSA no altera la base de datos. Para datos reales, reemplazá este modo con una modalidad de inserción segura antes de publicarlos.

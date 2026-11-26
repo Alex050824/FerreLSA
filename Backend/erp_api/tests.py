@@ -1,8 +1,10 @@
+import json
 from unittest.mock import patch
 
-from django.test import RequestFactory, SimpleTestCase
+from django.test import RequestFactory, SimpleTestCase, override_settings
 
 from .inventory import product_comments
+from .reports import _power_bi_embed_url, power_bi_report
 from .users import register
 
 
@@ -49,3 +51,28 @@ class RegistrationTests(SimpleTestCase):
                 result = register(self.factory.post("/api/auth/registro", payload, content_type="application/json"))
                 self.assertEqual(result.status_code, 422)
         save_user.assert_not_called()
+
+
+class PowerBIReportTests(SimpleTestCase):
+    def setUp(self):
+        self.factory = RequestFactory()
+
+    def test_only_power_bi_https_embed_urls_are_accepted(self):
+        self.assertTrue(_power_bi_embed_url("https://app.powerbi.com/view?r=sample"))
+        self.assertTrue(_power_bi_embed_url("https://app.powerbi.com/reportEmbed?reportId=sample"))
+        self.assertFalse(_power_bi_embed_url("http://app.powerbi.com/view?r=sample"))
+        self.assertFalse(_power_bi_embed_url("https://example.com/view?r=sample"))
+
+    @patch("Backend.erp_api.users.authenticate", return_value={"rol": "CLIENTE"})
+    def test_report_configuration_rejects_non_admin_users(self, authenticate):
+        response = power_bi_report(self.factory.get("/api/admin/reportes/power-bi"))
+        self.assertEqual(response.status_code, 403)
+
+    @patch("Backend.erp_api.users.authenticate", return_value={"rol": "ADMIN"})
+    @override_settings(POWER_BI_REPORT_URL="https://app.powerbi.com/view?r=sample")
+    def test_admin_can_read_configured_report_url(self, authenticate):
+        result = power_bi_report(self.factory.get("/api/admin/reportes/power-bi"))
+        self.assertEqual(result.status_code, 200)
+        self.assertEqual(json.loads(result.content), {
+            "configured": True, "url": "https://app.powerbi.com/view?r=sample",
+        })

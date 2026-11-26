@@ -33,6 +33,7 @@ load_dotenv(BASE_DIR / ".env")
 ERP_JWT_SECRET = os.getenv("ERP_JWT_SECRET", "")
 ERP_PAYPAL_SECRET = os.getenv("PAYPAL_INTEGRATION_SECRET", "")
 ERP_PAYPAL_CURRENCY = os.getenv("PAYPAL_MONEDA", "")
+POWER_BI_REPORT_URL = os.getenv("POWER_BI_REPORT_URL", "").strip()
 try:
     ERP_TAX_RATE = Decimal(os.getenv("TASA_IMPUESTO", "0"))
 except InvalidOperation:
