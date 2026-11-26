@@ -621,3 +621,7 @@
 }
 
 .store-card-image .store-image { height: auto; aspect-ratio: 1 / 1; }
+
+.store-detail .store-image { height: auto; aspect-ratio: 1 / 1; }
+
+.store-detail { max-width: 1000px; margin-inline: auto; }

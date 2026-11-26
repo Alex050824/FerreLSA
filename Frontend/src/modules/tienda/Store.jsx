@@ -116,7 +116,7 @@ export default function Store({ data, customer, token, verifyingSession, feedbac
           <button className={`store-profile-action ${page === 'perfil' ? 'is-active' : ''}`} onClick={() => navigate('perfil')} aria-label="Mi perfil" title="Mi perfil"><Icon name="user" size={20} /><span>Perfil</span></button>
           <button className="store-logout-action" onClick={onLogout} aria-label="Cerrar sesión" title="Cerrar sesión"><Icon name="logout" size={20} /><span className="store-sr-only">Cerrar sesión</span></button>
         </> : <button onClick={onLogin}>Iniciar sesión</button>}
-        {onBack && <button className="store-back" onClick={onBack}><Icon name="arrow" size={17} /><span>Volver al panel</span></button>}
+        {onBack && <button className="store-back" onClick={onBack}><Icon name="arrow" size={17} /><span>Panel administrativo</span></button>}
       </nav>
       </div>
     </header>
